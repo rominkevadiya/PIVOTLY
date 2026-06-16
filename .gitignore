@@ -33,3 +33,7 @@ dist/
 .DS_Store
 .idea/
 .vscode/
+
+# Local postgres data
+postgres_data/
+
