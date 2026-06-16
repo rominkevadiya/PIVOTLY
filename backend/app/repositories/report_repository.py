@@ -2,6 +2,7 @@
 
 import uuid
 
+from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from app.models.report import Report
@@ -21,6 +22,7 @@ class ReportRepository:
         industry: str,
         market_potential: str,
         recommendation: str,
+        user_id: uuid.UUID | None = None,
     ) -> Report:
         """Persist a generated report."""
         report = Report(
@@ -29,6 +31,7 @@ class ReportRepository:
             industry=industry,
             market_potential=market_potential,
             recommendation=recommendation,
+            user_id=user_id,
         )
         self.db.add(report)
         self.db.commit()
@@ -38,3 +41,12 @@ class ReportRepository:
     def get_by_id(self, report_id: uuid.UUID) -> Report | None:
         """Fetch a report by UUID."""
         return self.db.get(Report, report_id)
+
+    def get_by_user_id(self, user_id: uuid.UUID) -> list[Report]:
+        """Fetch all reports owned by a user, most recent first."""
+        return (
+            self.db.query(Report)
+            .filter(Report.user_id == user_id)
+            .order_by(desc(Report.created_at))
+            .all()
+        )

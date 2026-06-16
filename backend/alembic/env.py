@@ -7,7 +7,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import get_settings
 from app.core.database import Base
-from app.models import Report
+from app.models import Report, User, RateLimit
 
 config = context.config
 settings = get_settings()

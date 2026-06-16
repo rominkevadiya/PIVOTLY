@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     environment: str = "development"
     log_level: str = "INFO"
 
+    secret_key: str = Field("dev-secret-key-change-in-production", alias="SECRET_KEY")
+    access_token_expire_minutes: int = Field(1440, alias="ACCESS_TOKEN_EXPIRE_MINUTES")
+
     database_url: str = Field(..., alias="DATABASE_URL")
     gemini_api_key: str = Field(..., alias="GEMINI_API_KEY")
     gemini_model: str = Field("gemini-2.5-flash", alias="GEMINI_MODEL")

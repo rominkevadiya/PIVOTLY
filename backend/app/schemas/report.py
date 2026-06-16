@@ -106,3 +106,14 @@ class ReportResponse(BaseModel):
     market_potential: str
     recommendation: str
     created_at: datetime
+
+
+class ReportSummary(BaseModel):
+    """Lightweight report summary for history list."""
+
+    id: UUID
+    idea_snippet: str
+    industry: str
+    market_potential: str
+    recommendation: str
+    created_at: datetime

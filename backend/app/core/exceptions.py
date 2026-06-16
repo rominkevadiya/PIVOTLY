@@ -14,8 +14,20 @@ class AIServiceError(Exception):
     """Raised when AI report generation fails."""
 
 
+class RateLimitExceededError(Exception):
+    """Raised when user exceeds daily rate limit."""
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     """Register consistent JSON exception handlers."""
+
+    @app.exception_handler(RateLimitExceededError)
+    async def rate_limit_exceeded_handler(_: Request, exc: RateLimitExceededError) -> JSONResponse:
+        logger.warning("Rate limit exceeded: %s", exc)
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content={"detail": "Daily analysis limit reached"},
+        )
 
     @app.exception_handler(AIServiceError)
     async def ai_service_error_handler(_: Request, exc: AIServiceError) -> JSONResponse:

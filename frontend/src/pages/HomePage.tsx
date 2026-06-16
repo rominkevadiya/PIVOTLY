@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
-
 import { AppLayout } from "../components/AppLayout";
+import { useAuth } from "../context/AuthContext";
 
 export function HomePage() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <AppLayout>
       <section className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
@@ -17,13 +19,38 @@ export function HomePage() {
             Turn an early startup idea into a structured venture analysis covering industry, audience,
             competitors, market potential, risks, opportunity gaps, and a clear recommendation.
           </p>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              to="/analyze"
-              className="rounded-md bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:bg-moss"
-            >
-              Analyze a Startup Idea
-            </Link>
+          <div className="flex flex-wrap gap-4">
+            {isAuthenticated ? (
+              <>
+                <Link
+                  to="/analyze"
+                  className="rounded-md bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:bg-moss"
+                >
+                  Analyze a Startup Idea
+                </Link>
+                <Link
+                  to="/dashboard"
+                  className="rounded-md border border-ink/10 bg-white px-5 py-3 text-sm font-semibold text-ink hover:bg-paper transition"
+                >
+                  Go to Dashboard
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/register"
+                  className="rounded-md bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:bg-moss"
+                >
+                  Get Started
+                </Link>
+                <Link
+                  to="/login"
+                  className="rounded-md border border-ink/10 bg-white px-5 py-3 text-sm font-semibold text-ink hover:bg-paper transition"
+                >
+                  Sign In
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
