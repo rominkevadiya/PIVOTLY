@@ -70,11 +70,12 @@ textarea {
     display: none !important;
   }
 
-  /* Reset spacing and widths */
+  /* Reset spacing and widths, overriding flex/height layouts that clip pagination */
   body, 
   html, 
   #root, 
-  main, 
+  #root > div,
+  main,
   .print-container {
     background: #ffffff !important;
     color: #16201d !important;
@@ -82,6 +83,12 @@ textarea {
     margin: 0 !important;
     padding: 0 !important;
     box-shadow: none !important;
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: relative !important;
   }
 
   /* Set page margin */
@@ -95,13 +102,10 @@ textarea {
     print-color-adjust: exact !important;
   }
 
-  /* Prevent page breaks inside cards */
-  section,
-  .glass-panel,
-  .rounded-lg,
-  .rounded-md,
-  .shadow-panel,
-  .border {
+  /* Prevent page breaks inside cards, but allow breaks inside sections/borders */
+  .avoid-break,
+  .grid > div,
+  .divide-y > div {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
