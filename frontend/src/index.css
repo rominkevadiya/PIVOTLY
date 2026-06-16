@@ -71,7 +71,6 @@ textarea {
   }
 
   /* Reset spacing and widths, overriding flex/height layouts that clip pagination */
-  body, 
   html, 
   #root, 
   #root > div,
@@ -91,9 +90,24 @@ textarea {
     position: relative !important;
   }
 
-  /* Set page margin */
+  body {
+    background: #ffffff !important;
+    color: #16201d !important;
+    width: auto !important;
+    margin: 1.6cm !important; /* Simulates standard page margin on each page */
+    padding: 0 !important;
+    box-shadow: none !important;
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: relative !important;
+  }
+
+  /* Set page margin to 0 to hide browser headers/footers (title, date, URL) */
   @page {
-    margin: 1.5cm;
+    margin: 0;
   }
 
   /* Force display of background colors/borders */
