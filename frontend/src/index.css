@@ -84,6 +84,11 @@ textarea {
     box-shadow: none !important;
   }
 
+  /* Set page margin */
+  @page {
+    margin: 1.5cm;
+  }
+
   /* Force display of background colors/borders */
   * {
     -webkit-print-color-adjust: exact !important;
@@ -92,6 +97,7 @@ textarea {
 
   /* Prevent page breaks inside cards */
   section,
+  .glass-panel,
   .rounded-lg,
   .rounded-md,
   .shadow-panel,
@@ -100,13 +106,36 @@ textarea {
     break-inside: avoid !important;
   }
 
-  /* Layout configuration for print */
-  .grid {
+  /* Layout configuration for print: stack grids except explicit print:grid */
+  .grid:not(.print\:grid) {
     display: block !important;
   }
-  .grid > * {
+  .grid:not(.print\:grid) > * {
     margin-bottom: 1.5rem !important;
     width: 100% !important;
+  }
+
+  /* Ensure print grid items behave correctly */
+  .print\:grid {
+    display: grid !important;
+  }
+
+  /* Fix SVG gradient stroke issues in PDF export */
+  .progress-ring-circle {
+    stroke: #315c4d !important;
+  }
+
+  /* Add page break utility */
+  .print-page-break {
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+}
+
+/* Tab visibility on screen vs print */
+@media screen {
+  .tab-panel:not(.active) {
+    display: none !important;
   }
 }
 

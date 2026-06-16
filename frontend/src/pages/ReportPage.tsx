@@ -138,7 +138,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
                     strokeDasharray={circumference}
                     strokeDashoffset={strokeDashoffset}
                     strokeLinecap="round"
-                    className="transition-all duration-1000 ease-out"
+                    className="progress-ring-circle transition-all duration-1000 ease-out"
                   />
                   <defs>
                     <linearGradient id="gradientMoss" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -241,12 +241,12 @@ function ReportContent({ report }: { report: ReportResponse }) {
           </nav>
 
           {/* Tab 1: Strategy & SWOT */}
-          <div className={`space-y-6 ${activeTab === "strategy" ? "block" : "hidden print:block"}`}>
+          <div className={`tab-panel space-y-6 ${activeTab === "strategy" ? "active" : ""}`}>
             <ReportSectionCard title="Product Summary & Vision">
               <p className="text-[15px] leading-relaxed text-ink/80">{data.overview.idea_summary}</p>
             </ReportSectionCard>
 
-            <div className="grid gap-6 sm:grid-cols-2">
+            <div className="grid gap-6 sm:grid-cols-2 print:grid print:grid-cols-2">
               <ReportSectionCard title="Industry & Subsectors">
                 <div className="space-y-3">
                   <div>
@@ -289,9 +289,9 @@ function ReportContent({ report }: { report: ReportResponse }) {
           </div>
 
           {/* Tab 2: Market & Competitors */}
-          <div className={`space-y-6 ${activeTab === "competitors" ? "block" : "hidden print:block"}`}>
+          <div className={`tab-panel space-y-6 print-page-break ${activeTab === "competitors" ? "active" : ""}`}>
             <ReportSectionCard title="Competitor Intelligence Grid">
-              <div className="grid gap-5 sm:grid-cols-2">
+              <div className="grid gap-5 sm:grid-cols-2 print:grid print:grid-cols-2">
                 {data.competitors.map((competitor) => (
                   <div 
                     key={competitor.name} 
@@ -353,9 +353,9 @@ function ReportContent({ report }: { report: ReportResponse }) {
           </div>
 
           {/* Tab 3: Risks & Strategic Plan */}
-          <div className={`space-y-6 ${activeTab === "risks" ? "block" : "hidden print:block"}`}>
+          <div className={`tab-panel space-y-6 print-page-break ${activeTab === "risks" ? "active" : ""}`}>
             <ReportSectionCard title="Failure Risk Analysis">
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2 print:grid print:grid-cols-2">
                 {data.failure_risks.map((risk) => (
                   <div 
                     key={risk.risk} 
@@ -373,7 +373,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
               </div>
             </ReportSectionCard>
 
-            <div className="grid gap-6 sm:grid-cols-2">
+            <div className="grid gap-6 sm:grid-cols-2 print:grid print:grid-cols-2">
               <ReportSectionCard title="Identified Opportunity Gaps">
                 <div className="divide-y divide-ink/5">
                   {data.opportunity_gaps.map((gap) => (
@@ -399,7 +399,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
           </div>
 
           {/* Tab 4: Executive Summary */}
-          <div className={`space-y-6 ${activeTab === "summary" ? "block" : "hidden print:block"}`}>
+          <div className={`tab-panel space-y-6 print-page-break ${activeTab === "summary" ? "active" : ""}`}>
             {data.scoring_rubric && (
               <ReportSectionCard title="Venture Rating Breakdown">
                 <div className="space-y-4">

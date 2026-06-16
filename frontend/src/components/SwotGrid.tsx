@@ -13,7 +13,7 @@ export function SwotGrid({ strengths, weaknesses, opportunities, threats }: Swot
       <div className="border-b border-white/50 px-5 py-5 bg-white/40 backdrop-blur-md">
         <h3 className="text-sm font-bold uppercase tracking-widest text-moss text-gradient">SWOT Matrix Analysis</h3>
       </div>
-      <div className="grid md:grid-cols-2">
+      <div className="grid md:grid-cols-2 print:grid print:grid-cols-2">
         {/* Strengths */}
         <div className="border-b border-ink/10 p-5 md:border-r">
           <div className="flex items-center gap-2">
