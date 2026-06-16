@@ -246,7 +246,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
           </nav>
 
           {/* Tab 1: Strategy & SWOT */}
-          <div className={`tab-panel space-y-6 ${isPrinting || activeTab === "strategy" ? "active" : ""}`}>
+          <div className={`tab-panel space-y-6 print-page-break ${isPrinting || activeTab === "strategy" ? "active" : ""}`}>
             <ReportSectionCard title="Product Summary & Vision">
               <p className="text-[15px] leading-relaxed text-ink/80">{data.overview.idea_summary}</p>
             </ReportSectionCard>

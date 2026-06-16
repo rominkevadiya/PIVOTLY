@@ -134,6 +134,12 @@ textarea {
     page-break-before: always !important;
     break-before: page !important;
   }
+
+  /* Prevent headings from being separated from content */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
 }
 
 /* Tab visibility on screen vs print */
