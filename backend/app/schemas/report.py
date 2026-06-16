@@ -83,6 +83,22 @@ class RecommendationSection(BaseModel):
     confidence: Rating
 
 
+class ScoreCategory(BaseModel):
+    """A scored category with reasoning."""
+    score: int = Field(..., ge=1, le=10, description="Score from 1 to 10")
+    reasoning: str = Field(..., min_length=1)
+
+
+class ScoringRubricSection(BaseModel):
+    """Idea scoring rubric."""
+    market_size: ScoreCategory
+    competitive_advantage: ScoreCategory
+    technical_feasibility: ScoreCategory
+    monetization_potential: ScoreCategory
+    founder_fit: ScoreCategory
+    overall_score: int = Field(..., ge=1, le=100, description="Overall score out of 100")
+
+
 class VentureReport(BaseModel):
     """Strict report schema expected from Gemini."""
 
@@ -97,6 +113,7 @@ class VentureReport(BaseModel):
     opportunity_gaps: list[OpportunityGapItem] = Field(..., min_length=2, max_length=3)
     improvement_suggestions: list[ImprovementSuggestionItem] = Field(..., min_length=3, max_length=3)
     recommendation: RecommendationSection
+    scoring_rubric: ScoringRubricSection | None = None
 
 
 class ReportResponse(BaseModel):

@@ -1,6 +1,20 @@
 export type Rating = "High" | "Medium" | "Low";
 export type RecommendationDecision = "Build" | "Pivot" | "Research Further" | "Avoid";
 
+export interface ScoreCategory {
+  score: number;
+  reasoning: string;
+}
+
+export interface ScoringRubricSection {
+  market_size: ScoreCategory;
+  competitive_advantage: ScoreCategory;
+  technical_feasibility: ScoreCategory;
+  monetization_potential: ScoreCategory;
+  founder_fit: ScoreCategory;
+  overall_score: number;
+}
+
 export interface VentureReport {
   overview: {
     idea_summary: string;
@@ -48,6 +62,7 @@ export interface VentureReport {
     rationale: string;
     confidence: Rating;
   };
+  scoring_rubric?: ScoringRubricSection;
 }
 
 export interface AnalyzeResponse {

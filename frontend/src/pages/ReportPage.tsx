@@ -64,7 +64,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
   return (
     <div className="space-y-6 print-container">
       {/* Header section */}
-      <section className="rounded-lg border border-ink/10 bg-white p-6 shadow-panel">
+      <section className="glass-panel rounded-2xl p-6 sm:p-8 animate-fade-in-up">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex-1">
             <p className="text-sm font-semibold uppercase tracking-normal text-copper">{report.industry}</p>
@@ -90,6 +90,32 @@ function ReportContent({ report }: { report: ReportResponse }) {
         <RatingMeter label="Market Potential" value={data.market_potential.rating} />
         <RatingMeter label="Recommendation Confidence" value={data.recommendation.confidence} />
       </div>
+
+      {/* Scoring Rubric */}
+      {data.scoring_rubric && (
+        <ReportSectionCard title="Scoring Rubric">
+          <div className="flex flex-col md:flex-row gap-6">
+            <div className="flex-1 space-y-4">
+              {Object.entries(data.scoring_rubric)
+                .filter(([key]) => key !== 'overall_score')
+                .map(([key, category]: [string, any]) => (
+                <div key={key} className="border-b border-ink/5 pb-3 last:border-0 last:pb-0">
+                  <div className="flex justify-between items-center">
+                    <p className="font-semibold text-ink capitalize">{key.replace(/_/g, ' ')}</p>
+                    <span className="font-bold text-copper bg-copper/10 px-2 py-0.5 rounded text-sm">{category.score}/10</span>
+                  </div>
+                  <p className="text-sm mt-1.5 text-ink/80">{category.reasoning}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-center flex-col md:w-48 p-6 bg-copper/5 rounded-2xl border border-copper/10">
+              <span className="text-xs font-semibold uppercase tracking-wider text-copper">Overall Score</span>
+              <span className="text-5xl font-bold text-ink mt-2">{data.scoring_rubric.overall_score}</span>
+              <span className="text-xs text-ink/50 mt-1">out of 100</span>
+            </div>
+          </div>
+        </ReportSectionCard>
+      )}
 
       {/* SWOT Quadrant Summary */}
       <SwotGrid
@@ -130,7 +156,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
               <h4 className="text-xs font-semibold uppercase tracking-wider text-ink/60 mb-3">Market Sizing (TAM / SAM / SOM)</h4>
               <div className="grid gap-3">
                 {data.market_potential.tam && (
-                  <div className="rounded border border-ink/10 bg-ink/[0.02] p-2.5">
+                  <div className="rounded-xl border border-white/50 bg-white/40 backdrop-blur-sm p-3 hover:bg-white/60 transition-colors">
                     <div className="flex justify-between text-xs font-semibold text-ink">
                       <span>Total Addressable Market (TAM)</span>
                       <span className="text-sm font-bold text-copper">{data.market_potential.tam}</span>
@@ -139,7 +165,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
                   </div>
                 )}
                 {data.market_potential.sam && (
-                  <div className="rounded border border-ink/10 bg-ink/[0.02] p-2.5">
+                  <div className="rounded-xl border border-white/50 bg-white/40 backdrop-blur-sm p-3 hover:bg-white/60 transition-colors">
                     <div className="flex justify-between text-xs font-semibold text-ink">
                       <span>Serviceable Addressable Market (SAM)</span>
                       <span className="text-sm font-bold text-copper">{data.market_potential.sam}</span>
@@ -148,7 +174,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
                   </div>
                 )}
                 {data.market_potential.som && (
-                  <div className="rounded border border-ink/10 bg-ink/[0.02] p-2.5">
+                  <div className="rounded-xl border border-white/50 bg-white/40 backdrop-blur-sm p-3 hover:bg-white/60 transition-colors">
                     <div className="flex justify-between text-xs font-semibold text-ink">
                       <span>Serviceable Obtainable Market (SOM)</span>
                       <span className="text-sm font-bold text-copper">{data.market_potential.som}</span>
@@ -165,7 +191,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
       <ReportSectionCard title="Competitors">
         <div className="grid gap-3 md:grid-cols-2">
           {data.competitors.map((competitor) => (
-            <div key={competitor.name} className="flex flex-col justify-between rounded-md border border-ink/10 p-4">
+            <div key={competitor.name} className="flex flex-col justify-between rounded-xl border border-white/50 bg-white/40 backdrop-blur-sm p-5 hover:-translate-y-0.5 hover:shadow-lg hover:bg-white/60 transition-all">
               <div>
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-semibold text-ink">{competitor.name}</p>
@@ -202,7 +228,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
       <ReportSectionCard title="Failure Risks">
         <div className="grid gap-3 md:grid-cols-2">
           {data.failure_risks.map((risk) => (
-            <div key={risk.risk} className="rounded-md border border-ink/10 p-4">
+            <div key={risk.risk} className="rounded-xl border border-rose-500/20 bg-rose-50/50 backdrop-blur-sm p-5 hover:bg-rose-50 hover:shadow-md transition-all">
               <p className="font-semibold text-ink">{risk.risk}</p>
               <p className="mt-1 text-xs font-semibold uppercase tracking-normal text-copper">{risk.severity} Severity</p>
               <p className="mt-2 text-sm">{risk.description}</p>

@@ -42,11 +42,13 @@ class ReportRepository:
         """Fetch a report by UUID."""
         return self.db.get(Report, report_id)
 
-    def get_by_user_id(self, user_id: uuid.UUID) -> list[Report]:
-        """Fetch all reports owned by a user, most recent first."""
+    def get_by_user_id(self, user_id: uuid.UUID, limit: int = 10, offset: int = 0) -> list[Report]:
+        """Fetch all reports owned by a user, most recent first, with pagination."""
         return (
             self.db.query(Report)
             .filter(Report.user_id == user_id)
             .order_by(desc(Report.created_at))
+            .limit(limit)
+            .offset(offset)
             .all()
         )

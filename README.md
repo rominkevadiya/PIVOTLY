@@ -10,18 +10,18 @@ Unlike a generic AI wrapper, the platform uses a purpose-built prompt, strict JS
 
 ## Features
 
-### Currently Implemented
+### Currently Implemented (V1 Complete)
 
 - User registration, login, and bearer JWT-based authentication
-- Analysis history dashboard displaying previous startup reports
-- Daily submission rate limits (5 ideas per user per day) and global IP-based rate limiting (60 requests per minute)
-- Startup idea submission form with validation and character counter
+- Analysis history dashboard displaying previous startup reports with pagination
+- Daily submission rate limits (5 ideas per user per day) and user usage statistics endpoint
+- Startup idea submission form with validation, character counter, and optional region/budget context
 - Gemini 2.5 Flash venture analysis pipeline
 - Strict JSON report generation and Pydantic response validation
 - PostgreSQL persistence with SQLAlchemy and JSONB
 - Alembic database migration structure
 - Report retrieval by UUID (scoped to owner)
-- Clean React report viewing page with section cards
+- Clean React report viewing page with collapsible section cards
 - Recommendation badge for `Build`, `Pivot`, `Research Further`, and `Avoid`
 - Environment-based backend and frontend configuration
 - Global backend exception handling
@@ -363,14 +363,20 @@ Error responses:
 | Column | Type | Constraints | Description |
 |---|---|---|---|
 | `id` | UUID | Primary key | Public report identifier. |
-| `idea_text` | TEXT | Not null | Raw startup idea submitted by the user. |
-| `report_json` | JSONB | Not null | Full validated venture report. |
+| `idea_id` | UUID | Foreign key | Links to the ideas table. |
+| `user_id` | UUID | Foreign key | Links to the users table (denormalized for fast queries). |
 | `industry` | VARCHAR(255) | Not null | Promoted industry field for future filtering. |
 | `market_potential` | VARCHAR(50) | Not null | Promoted rating field. |
 | `recommendation` | VARCHAR(50) | Not null | Promoted final decision. |
+| `report_json` | JSONB | Not null | Full validated venture report. |
 | `created_at` | TIMESTAMP WITH TIME ZONE | Not null | Report creation timestamp. |
 
-There are no relationships in the current version because users, authentication, dashboards, and analysis history are intentionally out of scope.
+### Relationships Summary
+
+- `users` (1) to `ideas` (Many)
+- `ideas` (1) to `reports` (1)
+- `users` (1) to `reports` (Many)
+- `users` (1) to `rate_limits` (Many)
 
 ## AI Pipeline
 
@@ -392,29 +398,26 @@ After validation, `ReportService` extracts promoted fields from the structured r
 
 ## Future Roadmap
 
-### Phase 2
+### Phase 2: User Authentication (Completed)
+- User registration and login
+- JWT authentication and security
+- Multi-user isolation
 
-- Authentication
-- User accounts
-- Report ownership
+### Phase 3: Dashboard & Limits (Completed)
+- Analysis history view and pagination
+- Usage statistics
+- Database-backed rate limiting
 
-### Phase 3
-
-- Dashboard
-- Analysis history
-- Rate limiting
-
-### Phase 4
-
+### Phase 4: Data Augmentation & Integrations
 - MCP integrations
-- Competitor intelligence
-- Market intelligence
+- Competitor intelligence via external APIs (e.g., SerpAPI)
+- Market intelligence modules
+- Idea scoring rubric and PDF exports
 
-### Phase 5
-
-- AWS deployment
-- Production observability
-- Managed PostgreSQL
+### Phase 5: Deployment
+- AWS deployment (EC2/Elastic Beanstalk)
+- Production observability and logging
+- Managed PostgreSQL (AWS RDS)
 
 ## Screenshots
 

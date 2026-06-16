@@ -3,13 +3,21 @@
 from datetime import UTC, datetime
 
 
-def build_analysis_prompt(idea_text: str, search_context: str = "") -> str:
+def build_analysis_prompt(
+    idea_text: str, 
+    search_context: str = "",
+    region: str | None = None,
+    budget_range: str | None = None
+) -> str:
     """Build the strict JSON prompt used for Gemini analysis."""
     analysis_date = datetime.now(UTC).date().isoformat()
     
     search_section = ""
     if search_context:
         search_section = f"\nLIVE WEB SEARCH RESULTS (use this to verify real competitors and market context):\n{search_context}\n"
+
+    region_context = f"REGION: {region}" if region else "REGION: Not specified"
+    budget_context = f"BUDGET RANGE: {budget_range}" if budget_range else "BUDGET RANGE: Not specified"
 
     return f"""
 You are an expert startup analyst and venture capital researcher.
@@ -20,6 +28,8 @@ Return ONLY valid JSON. Do not include markdown, code fences, comments, or comme
 
 {search_section}
 IDEA: {idea_text}
+{region_context}
+{budget_context}
 DATE: {analysis_date}
 
 Perform this analysis:
@@ -32,6 +42,7 @@ Perform this analysis:
 7. Suggest exactly 3 specific improvements to strengthen the idea.
 8. Provide a final recommendation: Build, Pivot, Research Further, or Avoid.
 9. Provide a concise rationale and confidence level.
+10. Provide a scoring rubric rating 5 categories (market_size, competitive_advantage, technical_feasibility, monetization_potential, founder_fit) out of 10, plus an overall score out of 100. Assume the "founder" is a typical college student or first-time founder unless stated otherwise.
 
 Return your analysis as a JSON object with this exact structure:
 {{
@@ -88,6 +99,14 @@ Return your analysis as a JSON object with this exact structure:
     "decision": "Build|Pivot|Research Further|Avoid",
     "rationale": "string",
     "confidence": "High|Medium|Low"
+  }},
+  "scoring_rubric": {{
+    "market_size": {{ "score": 1, "reasoning": "string" }},
+    "competitive_advantage": {{ "score": 1, "reasoning": "string" }},
+    "technical_feasibility": {{ "score": 1, "reasoning": "string" }},
+    "monetization_potential": {{ "score": 1, "reasoning": "string" }},
+    "founder_fit": {{ "score": 1, "reasoning": "string" }},
+    "overall_score": 50
   }}
 }}
 """.strip()

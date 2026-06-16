@@ -20,9 +20,15 @@ class AIService:
         self.settings = settings
         self.client = None
 
-    def generate_report(self, idea_text: str, search_context: str = "") -> VentureReport:
+    def generate_report(
+        self, 
+        idea_text: str, 
+        search_context: str = "",
+        region: str | None = None,
+        budget_range: str | None = None
+    ) -> VentureReport:
         """Generate and validate a structured venture analysis report."""
-        prompt = build_analysis_prompt(idea_text, search_context)
+        prompt = build_analysis_prompt(idea_text, search_context, region, budget_range)
         raw_response = self._call_gemini(prompt)
         return self._parse_and_validate(raw_response)
 

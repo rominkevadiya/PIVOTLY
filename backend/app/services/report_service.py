@@ -25,7 +25,13 @@ class ReportService:
         self.ai_service = ai_service
         self.rate_limit_repo = rate_limit_repo
 
-    async def analyze_idea(self, idea_text: str, user_id: uuid.UUID | None = None) -> Report:
+    async def analyze_idea(
+        self, 
+        idea_text: str, 
+        user_id: uuid.UUID | None = None,
+        region: str | None = None,
+        budget_range: str | None = None
+    ) -> Report:
         """Generate an AI report and persist it, subject to rate limits."""
         if user_id and self.rate_limit_repo:
             today = date.today()
@@ -35,7 +41,7 @@ class ReportService:
 
         # Fetch live competitor context using Tavily Search API
         search_context = await search_competitors(idea_text)
-        report = self.ai_service.generate_report(idea_text, search_context)
+        report = self.ai_service.generate_report(idea_text, search_context, region, budget_range)
         
         persisted_report = self.repository.create(
             idea_text=idea_text,
@@ -55,9 +61,9 @@ class ReportService:
         """Retrieve a report by ID."""
         return self.repository.get_by_id(report_id)
 
-    def get_user_reports(self, user_id: uuid.UUID) -> list[Report]:
-        """Retrieve all reports for a user."""
-        return self.repository.get_by_user_id(user_id)
+    def get_user_reports(self, user_id: uuid.UUID, limit: int = 10, offset: int = 0) -> list[Report]:
+        """Retrieve all reports for a user with pagination."""
+        return self.repository.get_by_user_id(user_id, limit, offset)
 
     @staticmethod
     def validate_stored_report(report_json: dict) -> VentureReport:

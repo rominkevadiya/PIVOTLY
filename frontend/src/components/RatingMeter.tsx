@@ -27,18 +27,18 @@ export function RatingMeter({ label, value }: RatingMeterProps) {
   }
 
   return (
-    <div className="w-full rounded-lg border border-ink/10 bg-white p-4 shadow-sm">
+    <div className="w-full rounded-2xl glass-panel p-5 animate-fade-in-up hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wider text-ink/50">{label}</span>
+        <span className="text-xs font-bold uppercase tracking-widest text-ink/60">{label}</span>
         <span className={`text-sm ${textClass}`}>{value}</span>
       </div>
-      <div className="mt-3 h-2.5 w-full rounded-full bg-ink/10">
+      <div className="mt-4 h-3 w-full rounded-full bg-ink/5 shadow-inner overflow-hidden">
         <div
-          className={`h-2.5 rounded-full transition-all duration-500 ${bgClass}`}
+          className={`h-full rounded-full transition-all duration-1000 ease-out ${bgClass}`}
           style={{ width: `${percentage}%` }}
         />
       </div>
-      <div className="mt-2 flex justify-between text-[10px] uppercase tracking-normal text-ink/40">
+      <div className="mt-2.5 flex justify-between text-[10px] font-semibold uppercase tracking-wider text-ink/40">
         <span>Low</span>
         <span>Medium</span>
         <span>High</span>

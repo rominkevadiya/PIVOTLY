@@ -9,9 +9,9 @@ interface SwotGridProps {
 
 export function SwotGrid({ strengths, weaknesses, opportunities, threats }: SwotGridProps) {
   return (
-    <div className="w-full overflow-hidden rounded-lg border border-ink/10 bg-white shadow-panel">
-      <div className="border-b border-ink/10 px-5 py-4 bg-ink/[0.02]">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-copper">SWOT Matrix Analysis</h3>
+    <div className="w-full overflow-hidden rounded-2xl glass-panel animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+      <div className="border-b border-white/50 px-5 py-5 bg-white/40 backdrop-blur-md">
+        <h3 className="text-sm font-bold uppercase tracking-widest text-moss text-gradient">SWOT Matrix Analysis</h3>
       </div>
       <div className="grid md:grid-cols-2">
         {/* Strengths */}

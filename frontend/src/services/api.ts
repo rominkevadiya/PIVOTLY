@@ -88,12 +88,31 @@ export function fetchCurrentUser(): Promise<User> {
   return request<User>("/auth/me");
 }
 
+export interface UserStats {
+  total_analyses: number;
+  analyses_today: number;
+  daily_limit: number;
+  analyses_remaining_today: number;
+}
+
+export function getUserStats(): Promise<UserStats> {
+  return request<UserStats>("/users/me/stats");
+}
+
 // ─── Analysis API ─────────────────────────────────────────────────────
 
-export function analyzeIdea(ideaText: string): Promise<AnalyzeResponse> {
+export function analyzeIdea(
+  ideaText: string,
+  region?: string,
+  budgetRange?: string
+): Promise<AnalyzeResponse> {
+  const body: Record<string, string> = { idea_text: ideaText };
+  if (region) body.region = region;
+  if (budgetRange) body.budget_range = budgetRange;
+
   return request<AnalyzeResponse>("/analyze", {
     method: "POST",
-    body: JSON.stringify({ idea_text: ideaText }),
+    body: JSON.stringify(body),
   });
 }
 
@@ -101,6 +120,6 @@ export function getReport(reportId: string): Promise<ReportResponse> {
   return request<ReportResponse>(`/reports/${reportId}`);
 }
 
-export function listReports(): Promise<ReportSummary[]> {
-  return request<ReportSummary[]>("/reports");
+export function listReports(page = 1, limit = 10): Promise<ReportSummary[]> {
+  return request<ReportSummary[]>(`/reports?page=${page}&limit=${limit}`);
 }

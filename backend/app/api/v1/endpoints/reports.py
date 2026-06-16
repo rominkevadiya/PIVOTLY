@@ -27,11 +27,14 @@ def get_report_service(db: Session = Depends(get_db)) -> ReportService:
 
 @router.get("/reports", response_model=list[ReportSummary])
 def list_reports(
+    page: int = 1,
+    limit: int = 10,
     current_user: User = Depends(get_current_user),
     report_service: ReportService = Depends(get_report_service),
 ) -> list[ReportSummary]:
-    """Return all reports owned by the authenticated user (history view)."""
-    reports = report_service.get_user_reports(current_user.id)
+    """Return all reports owned by the authenticated user (history view) with pagination."""
+    offset = (page - 1) * limit
+    reports = report_service.get_user_reports(current_user.id, limit, offset)
     return [
         ReportSummary(
             id=r.id,

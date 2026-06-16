@@ -32,5 +32,10 @@ async def analyze_idea(
     report_service: ReportService = Depends(get_report_service),
 ) -> AnalyzeResponse:
     """Analyze a startup idea and persist the generated report."""
-    report = await report_service.analyze_idea(payload.idea_text, user_id=current_user.id)
+    report = await report_service.analyze_idea(
+        idea_text=payload.idea_text,
+        user_id=current_user.id,
+        region=payload.region,
+        budget_range=payload.budget_range
+    )
     return AnalyzeResponse(report_id=str(report.id))

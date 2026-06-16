@@ -9,6 +9,8 @@ class AnalyzeRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     idea_text: str = Field(..., min_length=10, max_length=1000)
+    region: str | None = Field(default=None, max_length=100)
+    budget_range: str | None = Field(default=None, max_length=50)
 
     @field_validator("idea_text")
     @classmethod
