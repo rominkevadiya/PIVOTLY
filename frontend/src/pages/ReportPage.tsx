@@ -44,6 +44,7 @@ export function ReportPage() {
 
 function ReportContent({ report }: { report: ReportResponse }) {
   const [activeTab, setActiveTab] = useState<TabId>("strategy");
+  const [isPrinting, setIsPrinting] = useState(false);
   const data = report.report_json;
   
   const createdAt = new Intl.DateTimeFormat(undefined, {
@@ -52,7 +53,11 @@ function ReportContent({ report }: { report: ReportResponse }) {
   }).format(new Date(report.created_at));
 
   const handlePrint = () => {
-    window.print();
+    setIsPrinting(true);
+    setTimeout(() => {
+      window.print();
+      setIsPrinting(false);
+    }, 150);
   };
 
   // Extract SWOT list items
@@ -241,7 +246,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
           </nav>
 
           {/* Tab 1: Strategy & SWOT */}
-          <div className={`tab-panel space-y-6 ${activeTab === "strategy" ? "active" : ""}`}>
+          <div className={`tab-panel space-y-6 ${isPrinting || activeTab === "strategy" ? "active" : ""}`}>
             <ReportSectionCard title="Product Summary & Vision">
               <p className="text-[15px] leading-relaxed text-ink/80">{data.overview.idea_summary}</p>
             </ReportSectionCard>
@@ -289,7 +294,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
           </div>
 
           {/* Tab 2: Market & Competitors */}
-          <div className={`tab-panel space-y-6 print-page-break ${activeTab === "competitors" ? "active" : ""}`}>
+          <div className={`tab-panel space-y-6 print-page-break ${isPrinting || activeTab === "competitors" ? "active" : ""}`}>
             <ReportSectionCard title="Competitor Intelligence Grid">
               <div className="grid gap-5 sm:grid-cols-2 print:grid print:grid-cols-2">
                 {data.competitors.map((competitor) => (
@@ -353,7 +358,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
           </div>
 
           {/* Tab 3: Risks & Strategic Plan */}
-          <div className={`tab-panel space-y-6 print-page-break ${activeTab === "risks" ? "active" : ""}`}>
+          <div className={`tab-panel space-y-6 print-page-break ${isPrinting || activeTab === "risks" ? "active" : ""}`}>
             <ReportSectionCard title="Failure Risk Analysis">
               <div className="grid gap-4 sm:grid-cols-2 print:grid print:grid-cols-2">
                 {data.failure_risks.map((risk) => (
@@ -399,7 +404,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
           </div>
 
           {/* Tab 4: Executive Summary */}
-          <div className={`tab-panel space-y-6 print-page-break ${activeTab === "summary" ? "active" : ""}`}>
+          <div className={`tab-panel space-y-6 print-page-break ${isPrinting || activeTab === "summary" ? "active" : ""}`}>
             {data.scoring_rubric && (
               <ReportSectionCard title="Venture Rating Breakdown">
                 <div className="space-y-4">
