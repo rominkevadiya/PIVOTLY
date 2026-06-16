@@ -259,7 +259,13 @@ This document outlines the REST API endpoints available in the backend service. 
       "monetization_potential": { "score": 6, "reasoning": "Hard to charge indie hackers." },
       "founder_fit": { "score": 8, "reasoning": "Assuming founder is a dev." },
       "overall_score": 72
-    }
+    },
+    "references": [
+      {
+        "name": "Validation Startup X",
+        "url": "https://example.com/startup-x"
+      }
+    ]
   }
 }
 ```
