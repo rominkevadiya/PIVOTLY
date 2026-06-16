@@ -134,12 +134,10 @@ textarea {
     page-break-before: always !important;
     break-before: page !important;
   }
-}
 
-/* Tab visibility on screen vs print */
-@media screen {
-  .tab-panel:not(.active) {
-    display: none !important;
+  /* Force all tab panels to be visible during print */
+  .tab-panel {
+    display: block !important;
   }
 }
 

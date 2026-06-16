@@ -241,7 +241,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
           </nav>
 
           {/* Tab 1: Strategy & SWOT */}
-          <div className={`tab-panel space-y-6 ${activeTab === "strategy" ? "active" : ""}`}>
+          <div className={`tab-panel space-y-6 ${activeTab === "strategy" ? "block" : "hidden"}`}>
             <ReportSectionCard title="Product Summary & Vision">
               <p className="text-[15px] leading-relaxed text-ink/80">{data.overview.idea_summary}</p>
             </ReportSectionCard>
@@ -289,7 +289,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
           </div>
 
           {/* Tab 2: Market & Competitors */}
-          <div className={`tab-panel space-y-6 print-page-break ${activeTab === "competitors" ? "active" : ""}`}>
+          <div className={`tab-panel space-y-6 print-page-break ${activeTab === "competitors" ? "block" : "hidden"}`}>
             <ReportSectionCard title="Competitor Intelligence Grid">
               <div className="grid gap-5 sm:grid-cols-2 print:grid print:grid-cols-2">
                 {data.competitors.map((competitor) => (
@@ -353,7 +353,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
           </div>
 
           {/* Tab 3: Risks & Strategic Plan */}
-          <div className={`tab-panel space-y-6 print-page-break ${activeTab === "risks" ? "active" : ""}`}>
+          <div className={`tab-panel space-y-6 print-page-break ${activeTab === "risks" ? "block" : "hidden"}`}>
             <ReportSectionCard title="Failure Risk Analysis">
               <div className="grid gap-4 sm:grid-cols-2 print:grid print:grid-cols-2">
                 {data.failure_risks.map((risk) => (
@@ -399,7 +399,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
           </div>
 
           {/* Tab 4: Executive Summary */}
-          <div className={`tab-panel space-y-6 print-page-break ${activeTab === "summary" ? "active" : ""}`}>
+          <div className={`tab-panel space-y-6 print-page-break ${activeTab === "summary" ? "block" : "hidden"}`}>
             {data.scoring_rubric && (
               <ReportSectionCard title="Venture Rating Breakdown">
                 <div className="space-y-4">
