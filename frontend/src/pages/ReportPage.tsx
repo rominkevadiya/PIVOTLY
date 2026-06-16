@@ -54,9 +54,21 @@ function ReportContent({ report }: { report: ReportResponse }) {
 
   const handlePrint = () => {
     setIsPrinting(true);
+    
+    // Set professional document title before printing so the saved PDF uses it as default filename
+    const originalTitle = document.title;
+    const cleanPitch = (data.overview.one_line_pitch || "Venture_Analysis")
+      .replace(/[^a-zA-Z0-9\s]/g, "")
+      .trim()
+      .replace(/\s+/g, "_")
+      .substring(0, 40);
+    document.title = `Pivotly_Venture_Report_${cleanPitch}`;
+
     setTimeout(() => {
       window.print();
       setIsPrinting(false);
+      // Restore original document title
+      document.title = originalTitle;
     }, 150);
   };
 
