@@ -63,6 +63,10 @@ export interface VentureReport {
     confidence: Rating;
   };
   scoring_rubric?: ScoringRubricSection;
+  references?: Array<{
+    name: string;
+    url: string;
+  }>;
 }
 
 export interface AnalyzeResponse {

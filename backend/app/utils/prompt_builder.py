@@ -43,6 +43,7 @@ Perform this analysis:
 8. Provide a final recommendation: Build, Pivot, Research Further, or Avoid.
 9. Provide a concise rationale and confidence level.
 10. Provide a scoring rubric rating 5 categories (market_size, competitive_advantage, technical_feasibility, monetization_potential, founder_fit) out of 10, plus an overall score out of 100. Assume the "founder" is a typical college student or first-time founder unless stated otherwise.
+11. Extract and cite 2 to 5 specific source websites or reference links from the LIVE WEB SEARCH RESULTS that are highly relevant to the competitors or market context.
 
 Return your analysis as a JSON object with this exact structure:
 {{
@@ -107,6 +108,12 @@ Return your analysis as a JSON object with this exact structure:
     "monetization_potential": {{ "score": 1, "reasoning": "string" }},
     "founder_fit": {{ "score": 1, "reasoning": "string" }},
     "overall_score": 50
-  }}
+  }},
+  "references": [
+    {{
+      "name": "string (name of the site/competitor, e.g. TechCrunch or competitor name)",
+      "url": "string (the exact URL from search results, e.g. https://...)"
+    }}
+  ]
 }}
 """.strip()

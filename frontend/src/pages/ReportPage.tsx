@@ -451,6 +451,30 @@ function ReportContent({ report }: { report: ReportResponse }) {
               </div>
             </ReportSectionCard>
           </div>
+
+          {/* Sources & References */}
+          {data.references && data.references.length > 0 && (
+            <div className="rounded-2xl border border-white/50 bg-white/40 p-5 backdrop-blur-md shadow-sm mt-6 avoid-break">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-ink/60 mb-3">Sources & References</h3>
+              <ul className="space-y-2 text-[11px] leading-relaxed text-ink/75">
+                {data.references.map((ref, idx) => (
+                  <li key={idx} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 border-b border-ink/5 pb-2 last:border-0 last:pb-0">
+                    <span className="font-semibold text-ink/80">{ref.name}</span>
+                    {ref.url && ref.url !== "#" && (
+                      <a
+                        href={ref.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-moss hover:underline break-all text-[10px]"
+                      >
+                        {ref.url}
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
 

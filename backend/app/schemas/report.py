@@ -99,6 +99,13 @@ class ScoringRubricSection(BaseModel):
     overall_score: int = Field(..., ge=1, le=100, description="Overall score out of 100")
 
 
+class ReferenceItem(BaseModel):
+    """Reference link or source cited for analysis."""
+
+    name: str = Field(..., min_length=1)
+    url: str = Field(..., min_length=1)
+
+
 class VentureReport(BaseModel):
     """Strict report schema expected from Gemini."""
 
@@ -114,6 +121,7 @@ class VentureReport(BaseModel):
     improvement_suggestions: list[ImprovementSuggestionItem] = Field(..., min_length=3, max_length=3)
     recommendation: RecommendationSection
     scoring_rubric: ScoringRubricSection | None = None
+    references: list[ReferenceItem] = Field(default_factory=list, description="Sources or reference URLs used during analysis")
 
 
 class ReportResponse(BaseModel):
