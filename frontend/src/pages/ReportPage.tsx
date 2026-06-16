@@ -124,6 +124,41 @@ function ReportContent({ report }: { report: ReportResponse }) {
           <p className="font-semibold text-copper">Rating: {data.market_potential.rating}</p>
           <p className="mt-2">{data.market_potential.rationale}</p>
           <p className="mt-2 text-sm text-ink/60">{data.market_potential.estimated_market_context}</p>
+          
+          {(data.market_potential.tam || data.market_potential.sam || data.market_potential.som) && (
+            <div className="mt-4 border-t border-ink/5 pt-4">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-ink/60 mb-3">Market Sizing (TAM / SAM / SOM)</h4>
+              <div className="grid gap-3">
+                {data.market_potential.tam && (
+                  <div className="rounded border border-ink/10 bg-ink/[0.02] p-2.5">
+                    <div className="flex justify-between text-xs font-semibold text-ink">
+                      <span>Total Addressable Market (TAM)</span>
+                      <span className="text-sm font-bold text-copper">{data.market_potential.tam}</span>
+                    </div>
+                    <p className="mt-0.5 text-[10px] text-ink/55">Total market demand for the product/service</p>
+                  </div>
+                )}
+                {data.market_potential.sam && (
+                  <div className="rounded border border-ink/10 bg-ink/[0.02] p-2.5">
+                    <div className="flex justify-between text-xs font-semibold text-ink">
+                      <span>Serviceable Addressable Market (SAM)</span>
+                      <span className="text-sm font-bold text-copper">{data.market_potential.sam}</span>
+                    </div>
+                    <p className="mt-0.5 text-[10px] text-ink/55">The segment targeted that matches your capability</p>
+                  </div>
+                )}
+                {data.market_potential.som && (
+                  <div className="rounded border border-ink/10 bg-ink/[0.02] p-2.5">
+                    <div className="flex justify-between text-xs font-semibold text-ink">
+                      <span>Serviceable Obtainable Market (SOM)</span>
+                      <span className="text-sm font-bold text-copper">{data.market_potential.som}</span>
+                    </div>
+                    <p className="mt-0.5 text-[10px] text-ink/55">The share of the market you can realistically capture</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </ReportSectionCard>
       </div>
 

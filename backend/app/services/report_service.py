@@ -9,6 +9,7 @@ from app.repositories.report_repository import ReportRepository
 from app.repositories.rate_limit_repository import RateLimitRepository
 from app.schemas.report import VentureReport
 from app.services.ai_service import AIService
+from app.services.search_service import search_competitors
 
 
 class ReportService:
@@ -24,7 +25,7 @@ class ReportService:
         self.ai_service = ai_service
         self.rate_limit_repo = rate_limit_repo
 
-    def analyze_idea(self, idea_text: str, user_id: uuid.UUID | None = None) -> Report:
+    async def analyze_idea(self, idea_text: str, user_id: uuid.UUID | None = None) -> Report:
         """Generate an AI report and persist it, subject to rate limits."""
         if user_id and self.rate_limit_repo:
             today = date.today()
@@ -32,7 +33,9 @@ class ReportService:
             if current_count >= 5:
                 raise RateLimitExceededError("Daily analysis limit reached")
 
-        report = self.ai_service.generate_report(idea_text)
+        # Fetch live competitor context using Tavily Search API
+        search_context = await search_competitors(idea_text)
+        report = self.ai_service.generate_report(idea_text, search_context)
         
         persisted_report = self.repository.create(
             idea_text=idea_text,

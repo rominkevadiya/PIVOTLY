@@ -20,9 +20,9 @@ class AIService:
         self.settings = settings
         self.client = None
 
-    def generate_report(self, idea_text: str) -> VentureReport:
+    def generate_report(self, idea_text: str, search_context: str = "") -> VentureReport:
         """Generate and validate a structured venture analysis report."""
-        prompt = build_analysis_prompt(idea_text)
+        prompt = build_analysis_prompt(idea_text, search_context)
         raw_response = self._call_gemini(prompt)
         return self._parse_and_validate(raw_response)
 
@@ -48,6 +48,15 @@ class AIService:
             logger.exception("Gemini request failed.")
             raise AIServiceError("Gemini request failed.") from exc
 
+        try:
+            if response.candidates:
+                candidate = response.candidates[0]
+                logger.info(f"Gemini finish reason: {candidate.finish_reason}")
+                if getattr(candidate, "finish_reason", None) not in ("STOP", None, "stop"):
+                    logger.warning(f"Gemini generation stopped with reason: {candidate.finish_reason}")
+        except Exception as e:
+            logger.warning(f"Could not read candidate metadata: {e}")
+
         if not response.text:
             logger.error("Gemini returned an empty response.")
             raise AIServiceError("Gemini returned an empty response.")
@@ -60,5 +69,11 @@ class AIService:
             return VentureReport.model_validate(parsed)
         except (ValueError, ValidationError) as exc:
             logger.warning("Invalid Gemini response: %s", exc)
-            logger.debug("Malformed Gemini payload: %s", raw_response)
+            logger.warning("Malformed Gemini payload: %s", raw_response)
+            try:
+                with open("/home/meetpatel/ROMIN/personal_project/Pivotly/backend/malformed_gemini.json", "w") as f:
+                    f.write(raw_response)
+            except Exception:
+                pass
             raise AIServiceError("Gemini returned malformed report JSON.") from exc
+

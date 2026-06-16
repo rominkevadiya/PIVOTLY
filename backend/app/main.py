@@ -41,6 +41,12 @@ def create_app() -> FastAPI:
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
     app.include_router(api_router, prefix=settings.api_v1_prefix)
+
+    # Mount Model Context Protocol (MCP) Server endpoints
+    from app.mcp_server import mcp_router, mcp_sse
+    app.include_router(mcp_router, prefix="/api/v1/mcp")
+    app.mount("/api/v1/mcp/messages", mcp_sse.handle_post_message)
+
     return app
 
 

@@ -48,6 +48,9 @@ class MarketPotentialSection(BaseModel):
     rating: Rating
     rationale: str = Field(..., min_length=1)
     estimated_market_context: str = Field(..., min_length=1)
+    tam: str | None = Field(default=None, description="Total Addressable Market (TAM) estimate")
+    sam: str | None = Field(default=None, description="Serviceable Addressable Market (SAM) estimate")
+    som: str | None = Field(default=None, description="Serviceable Obtainable Market (SOM) estimate")
 
 
 class FailureRiskItem(BaseModel):

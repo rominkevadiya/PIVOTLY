@@ -22,8 +22,9 @@ class Settings(BaseSettings):
 
     database_url: str = Field(..., alias="DATABASE_URL")
     gemini_api_key: str = Field(..., alias="GEMINI_API_KEY")
-    gemini_model: str = Field("gemini-2.5-flash", alias="GEMINI_MODEL")
+    gemini_model: str = Field("gemini-1.5-flash", alias="GEMINI_MODEL")
     gemini_timeout_seconds: float = Field(30.0, alias="GEMINI_TIMEOUT_SECONDS")
+    tavily_api_key: str | None = Field(None, alias="TAVILY_API_KEY")
     allowed_origins_raw: str = Field(
         "http://localhost:5173,http://127.0.0.1:5173",
         alias="ALLOWED_ORIGINS",

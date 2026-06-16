@@ -26,6 +26,9 @@ export interface VentureReport {
     rating: Rating;
     rationale: string;
     estimated_market_context: string;
+    tam?: string;
+    sam?: string;
+    som?: string;
   };
   failure_risks: Array<{
     risk: string;

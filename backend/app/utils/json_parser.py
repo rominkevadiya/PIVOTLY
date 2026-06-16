@@ -6,11 +6,14 @@ from typing import Any
 
 
 def parse_json_object(raw_text: str) -> dict[str, Any]:
-    """Parse a JSON object, tolerating fenced JSON blocks from model output."""
+    """Parse a JSON object, tolerating fenced JSON blocks and surrounding conversational text."""
     cleaned = raw_text.strip()
-    fence_match = re.search(r"```(?:json)?\s*(\{.*\})\s*```", cleaned, flags=re.DOTALL)
-    if fence_match:
-        cleaned = fence_match.group(1).strip()
+    
+    # Extract substring between first '{' and last '}'
+    start_idx = cleaned.find("{")
+    end_idx = cleaned.rfind("}")
+    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+        cleaned = cleaned[start_idx:end_idx + 1]
 
     parsed = json.loads(cleaned)
     if not isinstance(parsed, dict):

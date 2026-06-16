@@ -26,11 +26,11 @@ def get_report_service(db: Session = Depends(get_db)) -> ReportService:
 
 
 @router.post("/analyze", response_model=AnalyzeResponse, status_code=status.HTTP_201_CREATED)
-def analyze_idea(
+async def analyze_idea(
     payload: AnalyzeRequest,
     current_user: User = Depends(get_current_user),
     report_service: ReportService = Depends(get_report_service),
 ) -> AnalyzeResponse:
     """Analyze a startup idea and persist the generated report."""
-    report = report_service.analyze_idea(payload.idea_text, user_id=current_user.id)
+    report = await report_service.analyze_idea(payload.idea_text, user_id=current_user.id)
     return AnalyzeResponse(report_id=str(report.id))
