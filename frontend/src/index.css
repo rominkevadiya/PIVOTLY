@@ -20,3 +20,58 @@ button,
 textarea {
   font: inherit;
 }
+
+@media print {
+  /* Hide interactive/navigation UI */
+  nav, 
+  header, 
+  aside,
+  button, 
+  .no-print,
+  a[href^="/analyze"],
+  a[href^="/dashboard"],
+  .btn,
+  footer {
+    display: none !important;
+  }
+
+  /* Reset spacing and widths */
+  body, 
+  html, 
+  #root, 
+  main, 
+  .print-container {
+    background: #ffffff !important;
+    color: #16201d !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* Force display of background colors/borders */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Prevent page breaks inside cards */
+  section,
+  .rounded-lg,
+  .rounded-md,
+  .shadow-panel,
+  .border {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Layout configuration for print */
+  .grid {
+    display: block !important;
+  }
+  .grid > * {
+    margin-bottom: 1.5rem !important;
+    width: 100% !important;
+  }
+}
+
