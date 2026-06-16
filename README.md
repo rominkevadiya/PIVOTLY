@@ -12,12 +12,15 @@ Unlike a generic AI wrapper, the platform uses a purpose-built prompt, strict JS
 
 ### Currently Implemented
 
+- User registration, login, and bearer JWT-based authentication
+- Analysis history dashboard displaying previous startup reports
+- Daily submission rate limits (5 ideas per user per day) and global IP-based rate limiting (60 requests per minute)
 - Startup idea submission form with validation and character counter
 - Gemini 2.5 Flash venture analysis pipeline
 - Strict JSON report generation and Pydantic response validation
 - PostgreSQL persistence with SQLAlchemy and JSONB
-- Alembic migration for the `reports` table
-- Report retrieval by UUID
+- Alembic database migration structure
+- Report retrieval by UUID (scoped to owner)
 - Clean React report viewing page with section cards
 - Recommendation badge for `Build`, `Pivot`, `Research Further`, and `Avoid`
 - Environment-based backend and frontend configuration
@@ -25,9 +28,6 @@ Unlike a generic AI wrapper, the platform uses a purpose-built prompt, strict JS
 
 ### Planned Future Features
 
-- Authentication and user accounts
-- Analysis history and dashboard
-- Rate limiting for AI usage control
 - Competitor intelligence with external data sources
 - Market intelligence modules
 - MCP integrations
@@ -267,9 +267,8 @@ http://localhost:5173
 | `ALLOWED_ORIGINS` | Yes | Backend | Comma-separated CORS origins for frontend access. |
 | `ENVIRONMENT` | No | Backend | Runtime environment, usually `development` or `production`. |
 | `LOG_LEVEL` | No | Backend | Python logging level. |
+| `SECRET_KEY` | Yes | Backend | Random secret key used for signing JWT authentication tokens. |
 | `VITE_API_BASE_URL` | Yes | Frontend | Base URL for backend API requests. |
-
-`SECRET_KEY` is intentionally not required in the current implementation because authentication is not implemented yet. It will become required when user accounts and JWT sessions are added.
 
 ## API Documentation
 
