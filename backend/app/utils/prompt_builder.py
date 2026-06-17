@@ -4,17 +4,20 @@ from datetime import UTC, datetime
 
 
 def build_analysis_prompt(
-    idea_text: str, 
+    idea_text: str,
     search_context: str = "",
     region: str | None = None,
-    budget_range: str | None = None
+    budget_range: str | None = None,
 ) -> str:
     """Build the strict JSON prompt used for Gemini analysis."""
     analysis_date = datetime.now(UTC).date().isoformat()
-    
+
     search_section = ""
     if search_context:
-        search_section = f"\nLIVE WEB SEARCH RESULTS (use this to verify real competitors and market context):\n{search_context}\n"
+        search_section = (
+            f"\nLIVE WEB SEARCH RESULTS (use this to verify real competitors and market context):\n"
+            f"{search_context}\n"
+        )
 
     region_context = f"REGION: {region}" if region else "REGION: Not specified"
     budget_context = f"BUDGET RANGE: {budget_range}" if budget_range else "BUDGET RANGE: Not specified"
@@ -44,6 +47,10 @@ Perform this analysis:
 9. Provide a concise rationale and confidence level.
 10. Provide a scoring rubric rating 5 categories (market_size, competitive_advantage, technical_feasibility, monetization_potential, founder_fit) out of 10, plus an overall score out of 100. Assume the "founder" is a typical college student or first-time founder unless stated otherwise.
 11. Extract and cite 2 to 5 specific source websites or reference links from the LIVE WEB SEARCH RESULTS that are highly relevant to the competitors or market context.
+12. Generate an explicit SWOT analysis with 2-5 specific bullet points for each quadrant: Strengths (internal advantages & moats), Weaknesses (internal gaps & limitations), Opportunities (external market gaps to exploit), Threats (external risks & competitive forces). Do NOT reuse text from other sections verbatim.
+13. Design a phased Go-to-Market strategy with 2-4 phases. Each phase must include the phase name, duration (e.g. "Months 1-3"), a list of 2-4 specific actions, and the primary distribution channel.
+14. List exactly 5 concrete next steps ranked by priority (1=highest), each with a specific action, the rationale behind it, and a realistic timeframe (e.g. "Week 1-2", "Month 1").
+15. Estimate unit economics: Customer Acquisition Cost (CAC), Lifetime Value (LTV), LTV/CAC ratio, payback period, the revenue model type, and pricing notes.
 
 Return your analysis as a JSON object with this exact structure:
 {{
@@ -114,6 +121,39 @@ Return your analysis as a JSON object with this exact structure:
       "name": "string (name of the site/competitor, e.g. TechCrunch or competitor name)",
       "url": "string (the exact URL from search results, e.g. https://...)"
     }}
-  ]
+  ],
+  "swot": {{
+    "strengths": ["string", "string"],
+    "weaknesses": ["string", "string"],
+    "opportunities": ["string", "string"],
+    "threats": ["string", "string"]
+  }},
+  "go_to_market": {{
+    "strategy_summary": "string",
+    "phases": [
+      {{
+        "phase": "string (e.g. Phase 1 – Validate)",
+        "duration": "string (e.g. Months 1-2)",
+        "actions": ["string", "string"],
+        "channel": "string (e.g. Direct outreach, LinkedIn)"
+      }}
+    ]
+  }},
+  "next_steps": [
+    {{
+      "priority": 1,
+      "action": "string",
+      "rationale": "string",
+      "timeframe": "string (e.g. Week 1-2)"
+    }}
+  ],
+  "unit_economics": {{
+    "estimated_cac": "string (e.g. $120) or null",
+    "estimated_ltv": "string (e.g. $960) or null",
+    "ltv_cac_ratio": "string (e.g. 8x) or null",
+    "payback_period": "string (e.g. 3 months) or null",
+    "revenue_model": "string (e.g. SaaS subscription, freemium upsell)",
+    "pricing_notes": "string"
+  }}
 }}
 """.strip()

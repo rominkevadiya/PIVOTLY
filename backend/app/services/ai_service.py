@@ -77,8 +77,12 @@ class AIService:
             logger.warning("Invalid Gemini response: %s", exc)
             logger.warning("Malformed Gemini payload: %s", raw_response)
             try:
-                with open("/home/meetpatel/ROMIN/personal_project/Pivotly/backend/malformed_gemini.json", "w") as f:
+                import os
+                import tempfile
+                debug_path = os.path.join(tempfile.gettempdir(), "malformed_gemini.json")
+                with open(debug_path, "w") as f:
                     f.write(raw_response)
+                logger.info("Malformed Gemini payload written to: %s", debug_path)
             except Exception:
                 pass
             raise AIServiceError("Gemini returned malformed report JSON.") from exc

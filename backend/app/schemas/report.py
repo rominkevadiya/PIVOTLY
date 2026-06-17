@@ -85,12 +85,14 @@ class RecommendationSection(BaseModel):
 
 class ScoreCategory(BaseModel):
     """A scored category with reasoning."""
+
     score: int = Field(..., ge=1, le=10, description="Score from 1 to 10")
     reasoning: str = Field(..., min_length=1)
 
 
 class ScoringRubricSection(BaseModel):
     """Idea scoring rubric."""
+
     market_size: ScoreCategory
     competitive_advantage: ScoreCategory
     technical_feasibility: ScoreCategory
@@ -105,6 +107,55 @@ class ReferenceItem(BaseModel):
     name: str = Field(..., min_length=1)
     url: str = Field(..., min_length=1)
 
+
+# ── Enrichment sections ────────────────────────────────────────────────────────
+
+class SwotSection(BaseModel):
+    """Explicit AI-generated SWOT analysis."""
+
+    strengths: list[str] = Field(..., min_length=2, max_length=5)
+    weaknesses: list[str] = Field(..., min_length=2, max_length=5)
+    opportunities: list[str] = Field(..., min_length=2, max_length=5)
+    threats: list[str] = Field(..., min_length=2, max_length=5)
+
+
+class GoToMarketPhase(BaseModel):
+    """A single phase in the go-to-market plan."""
+
+    phase: str = Field(..., min_length=1, description="e.g. 'Phase 1 – Launch'")
+    duration: str = Field(..., min_length=1, description="e.g. 'Months 1-3'")
+    actions: list[str] = Field(..., min_length=1, max_length=5)
+    channel: str = Field(..., min_length=1, description="Primary channel, e.g. 'Product Hunt'")
+
+
+class GoToMarketSection(BaseModel):
+    """Go-to-market strategy broken into phases."""
+
+    strategy_summary: str = Field(..., min_length=1)
+    phases: list[GoToMarketPhase] = Field(..., min_length=2, max_length=4)
+
+
+class NextStepItem(BaseModel):
+    """A concrete, actionable next step."""
+
+    priority: int = Field(..., ge=1, le=5, description="Priority rank 1 (highest) to 5")
+    action: str = Field(..., min_length=1)
+    rationale: str = Field(..., min_length=1)
+    timeframe: str = Field(..., min_length=1, description="e.g. 'Week 1', 'Month 1-2'")
+
+
+class UnitEconomicsSection(BaseModel):
+    """Key unit economics estimates."""
+
+    estimated_cac: str | None = Field(default=None, description="Customer Acquisition Cost, e.g. '$50'")
+    estimated_ltv: str | None = Field(default=None, description="Lifetime Value, e.g. '$400'")
+    ltv_cac_ratio: str | None = Field(default=None, description="LTV/CAC ratio, e.g. '8x'")
+    payback_period: str | None = Field(default=None, description="e.g. '4 months'")
+    revenue_model: str = Field(..., min_length=1, description="e.g. 'SaaS subscription, freemium'")
+    pricing_notes: str = Field(..., min_length=1)
+
+
+# ── Core report model ──────────────────────────────────────────────────────────
 
 class VentureReport(BaseModel):
     """Strict report schema expected from Gemini."""
@@ -121,7 +172,12 @@ class VentureReport(BaseModel):
     improvement_suggestions: list[ImprovementSuggestionItem] = Field(..., min_length=3, max_length=3)
     recommendation: RecommendationSection
     scoring_rubric: ScoringRubricSection | None = None
-    references: list[ReferenceItem] = Field(default_factory=list, description="Sources or reference URLs used during analysis")
+    references: list[ReferenceItem] = Field(default_factory=list)
+    # Optional enrichment — backward-compatible with existing stored reports
+    swot: SwotSection | None = None
+    go_to_market: GoToMarketSection | None = None
+    next_steps: list[NextStepItem] | None = Field(default=None, max_length=5)
+    unit_economics: UnitEconomicsSection | None = None
 
 
 class ReportResponse(BaseModel):

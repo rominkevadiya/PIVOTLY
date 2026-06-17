@@ -86,7 +86,7 @@ export function DashboardPage() {
             <div className="rounded-2xl border border-white/50 bg-white/40 p-5 shadow-panel backdrop-blur-sm">
               <span className="text-[10px] font-bold text-ink/40 uppercase block">Daily Submissions Remaining</span>
               <span className="text-3xl font-extrabold text-moss mt-1 block">
-                {stats.analyses_remaining_today} / 10
+                {stats.analyses_remaining_today} / {stats.daily_limit}
               </span>
             </div>
             <div className="rounded-2xl border border-white/50 bg-white/40 p-5 shadow-panel backdrop-blur-sm">

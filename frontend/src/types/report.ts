@@ -15,6 +15,45 @@ export interface ScoringRubricSection {
   overall_score: number;
 }
 
+// ── Enrichment sections ────────────────────────────────────────────────────────
+
+export interface SwotSection {
+  strengths: string[];
+  weaknesses: string[];
+  opportunities: string[];
+  threats: string[];
+}
+
+export interface GoToMarketPhase {
+  phase: string;
+  duration: string;
+  actions: string[];
+  channel: string;
+}
+
+export interface GoToMarketSection {
+  strategy_summary: string;
+  phases: GoToMarketPhase[];
+}
+
+export interface NextStepItem {
+  priority: number;
+  action: string;
+  rationale: string;
+  timeframe: string;
+}
+
+export interface UnitEconomicsSection {
+  estimated_cac?: string | null;
+  estimated_ltv?: string | null;
+  ltv_cac_ratio?: string | null;
+  payback_period?: string | null;
+  revenue_model: string;
+  pricing_notes: string;
+}
+
+// ── Core report ────────────────────────────────────────────────────────────────
+
 export interface VentureReport {
   overview: {
     idea_summary: string;
@@ -67,6 +106,11 @@ export interface VentureReport {
     name: string;
     url: string;
   }>;
+  // Enrichment sections (optional — older reports may not have these)
+  swot?: SwotSection;
+  go_to_market?: GoToMarketSection;
+  next_steps?: NextStepItem[];
+  unit_economics?: UnitEconomicsSection;
 }
 
 export interface AnalyzeResponse {

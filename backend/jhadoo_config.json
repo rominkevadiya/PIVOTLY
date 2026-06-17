@@ -1,0 +1,82 @@
+{
+  "main_folder": "/home/meetpatel",
+  "bin_folder": "/home/meetpatel/.local/share/Trash/jhadoo",
+  "targets": [
+    {
+      "name": "venv",
+      "days_threshold": 7,
+      "enabled": true
+    },
+    {
+      "name": "node_modules",
+      "days_threshold": 14,
+      "enabled": true
+    },
+    {
+      "name": "__pycache__",
+      "days_threshold": 30,
+      "enabled": true
+    },
+    {
+      "name": ".venv",
+      "days_threshold": 7,
+      "enabled": true
+    },
+    {
+      "name": ".pytest_cache",
+      "days_threshold": 30,
+      "enabled": false
+    },
+    {
+      "name": "build",
+      "days_threshold": 14,
+      "enabled": false
+    },
+    {
+      "name": "dist",
+      "days_threshold": 14,
+      "enabled": false
+    },
+    {
+      "name": ".tox",
+      "days_threshold": 30,
+      "enabled": false
+    },
+    {
+      "name": "target",
+      "days_threshold": 14,
+      "enabled": false
+    }
+  ],
+  "safety": {
+    "size_threshold_mb": 5000,
+    "require_confirmation_above_mb": 500,
+    "dry_run": false,
+    "backup_mode": false,
+    "archive_folder": "/home/meetpatel/.jhadoo_archive"
+  },
+  "exclusions": [],
+  "notifications": {
+    "enabled": true,
+    "on_completion": true,
+    "on_error": true
+  },
+  "logging": {
+    "log_file": "/home/meetpatel/.jhadoo/cleanup_log.csv",
+    "manifest_file": "/home/meetpatel/.jhadoo/deletion_manifest.json",
+    "level": "INFO"
+  },
+  "git": {
+    "enabled": false,
+    "check_stale_branches": true,
+    "check_large_files": true,
+    "large_file_threshold_mb": 50
+  },
+  "docker": {
+    "enabled": false,
+    "unused_image_days": 60
+  },
+  "telemetry": {
+    "enabled": false
+  }
+}

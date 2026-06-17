@@ -3,26 +3,14 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
-from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
-from app.repositories.report_repository import ReportRepository
 from app.schemas.report import ReportResponse, ReportSummary
-from app.services.ai_service import AIService
 from app.services.report_service import ReportService
+from app.api.v1.dependencies import get_report_service
 
 router = APIRouter()
-
-
-def get_report_service(db: Session = Depends(get_db)) -> ReportService:
-    """Build the report service dependency."""
-    settings = get_settings()
-    repository = ReportRepository(db)
-    ai_service = AIService(settings)
-    return ReportService(repository, ai_service)
 
 
 @router.get("/reports", response_model=list[ReportSummary])

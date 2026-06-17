@@ -57,103 +57,272 @@ textarea {
 }
 
 @media print {
-  /* Hide interactive/navigation UI */
-  nav, 
-  header, 
-  aside,
-  button, 
-  .no-print,
-  a[href^="/analyze"],
-  a[href^="/dashboard"],
-  .btn,
-  footer {
-    display: none !important;
-  }
-
-  /* Reset spacing and widths, overriding flex/height layouts that clip pagination */
-  html, 
-  #root, 
-  #root > div,
-  main,
-  .print-container {
-    background: #ffffff !important;
-    color: #16201d !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    box-shadow: none !important;
-    display: block !important;
-    height: auto !important;
-    min-height: 0 !important;
-    max-height: none !important;
-    overflow: visible !important;
-    position: relative !important;
+  @page {
+    size: A4;
+    margin: 1.5cm; /* standard professional margin */
   }
 
   body {
-    background: #ffffff !important;
-    color: #16201d !important;
-    width: auto !important;
-    margin: 1.6cm !important; /* Simulates standard page margin on each page */
-    padding: 0 !important;
+    background: #fff !important;
+    color: #333 !important;
+    font-size: 10pt !important;
+  }
+
+  /* Hide UI elements */
+  .no-print, header, nav, button {
+    display: none !important;
+  }
+
+  /* ══════════════════════════════
+     COVER BLOCK
+     Clean, professional, left-aligned
+  ══════════════════════════════ */
+  section:first-of-type {
+    background: #fff !important;
+    border: none !important;
+    border-radius: 0 !important;
     box-shadow: none !important;
-    display: block !important;
-    height: auto !important;
-    min-height: 0 !important;
-    max-height: none !important;
-    overflow: visible !important;
-    position: relative !important;
-  }
-
-  /* Set page margin to 0 to hide browser headers/footers (title, date, URL) */
-  @page {
-    margin: 0;
-  }
-
-  /* Force display of background colors/borders */
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  /* Prevent page breaks inside cards, but allow breaks inside sections/borders */
-  .avoid-break,
-  .grid > div,
-  .divide-y > div {
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-  }
-
-  /* Layout configuration for print: stack grids except explicit print:grid */
-  .grid:not(.print\:grid) {
+    backdrop-filter: none !important;
+    padding: 0 0 1.5rem 0 !important;
+    margin: 0 0 1.5rem 0 !important;
+    border-bottom: 2px solid #111 !important;
+    page-break-before: avoid !important;
+    page-break-after: avoid !important;
     display: block !important;
   }
-  .grid:not(.print\:grid) > * {
-    margin-bottom: 1.5rem !important;
-    width: 100% !important;
+
+  /* Force the flex container to block so it flows nicely */
+  section:first-of-type > div {
+    display: block !important;
+  }
+  
+  section:first-of-type h1 {
+    color: #111 !important;
+    font-size: 24pt !important;
+    font-weight: 800 !important;
+    line-height: 1.2 !important;
+    margin: 0.5rem 0 0.8rem 0 !important;
+    letter-spacing: -0.01em !important;
+    text-align: left !important;
   }
 
-  /* Ensure print grid items behave correctly */
-  .print\:grid {
-    display: grid !important;
+  section:first-of-type p {
+    color: #555 !important;
+    font-size: 10.5pt !important;
+    line-height: 1.5 !important;
+    margin: 0 0 1rem 0 !important;
+    max-width: 90% !important;
+    text-align: left !important;
   }
 
-  /* Fix SVG gradient stroke issues in PDF export */
-  .progress-ring-circle {
-    stroke: #315c4d !important;
+  /* Industry pill */
+  section:first-of-type .bg-moss\/10 {
+    background: none !important;
+    color: #555 !important;
+    font-size: 8pt !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.1em !important;
+    text-transform: uppercase !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    display: inline-block !important;
+    margin-bottom: 0.25rem !important;
   }
 
-  /* Add page break utility */
-  .print-page-break {
-    page-break-before: always !important;
-    break-before: page !important;
+  section:first-of-type .text-ink\/40 { color: #888 !important; font-size: 8pt !important; }
+
+  /* Print verdict strip on cover */
+  .print-verdict-strip {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 2.5rem !important;
+    margin-top: 1.5rem !important;
+    padding-top: 1rem !important;
+    border-top: 1px dotted #ccc !important;
+  }
+  .print-verdict-strip span { 
+    font-size: 7.5pt !important; 
+    color: #777 !important; 
+    font-weight: 600 !important; 
+    text-transform: uppercase !important; 
+    letter-spacing: 0.05em !important; 
+    display: flex !important; 
+    flex-direction: column !important; 
+    align-items: flex-start !important; 
+    gap: 0.2rem !important; 
+  }
+  .print-verdict-strip strong { 
+    color: #111 !important; 
+    font-size: 11pt !important; 
+    font-weight: 700 !important; 
   }
 
-  /* Prevent headings from being separated from content */
-  h1, h2, h3, h4, h5, h6 {
+  /* ══════════════════════════════
+     SECTION BANNERS
+     Minimalist dividers
+  ══════════════════════════════ */
+  .pdf-section-banner {
+    display: flex !important;
+    align-items: baseline !important;
+    gap: 1rem !important;
+    padding: 0 0 0.5rem 0 !important;
+    margin: 2rem 0 1rem 0 !important;
+    border-bottom: 1px solid #111 !important;
     page-break-after: avoid !important;
     break-after: avoid !important;
   }
+  .pdf-section-banner .section-num {
+    font-size: 8pt !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.1em !important;
+    text-transform: uppercase !important;
+    color: #666 !important;
+    margin: 0 !important;
+  }
+  .pdf-section-banner .section-title {
+    font-size: 14pt !important;
+    font-weight: 800 !important;
+    color: #111 !important;
+    margin: 0 !important;
+  }
+
+  /* ══════════════════════════════
+     CARDS
+     Clean, compact, 1px border
+  ══════════════════════════════ */
+  .rounded-3xl, .rounded-2xl {
+    border-radius: 4px !important;
+  }
+
+  .bg-white\/40, .bg-white\/50, .bg-white\/60, .bg-white\/70,
+  .shadow-panel, .backdrop-blur-md, .backdrop-blur-sm {
+    background: #fff !important;
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .lg\:sticky { box-shadow: none !important; border: none !important; }
+
+  /* Card inner title bars */
+  .border-b { border-color: #eee !important; border-width: 1px !important; }
+  .border-white\/50 { border-color: #eee !important; border-width: 1px !important; }
+
+  /* Section card heading */
+  .text-gradient {
+    background: none !important;
+    -webkit-text-fill-color: #111 !important;
+    color: #111 !important;
+    font-size: 10pt !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+  }
+
+  /* ══════════════════════════════
+     GRIDS & LAYOUT
+  ══════════════════════════════ */
+  .lg\:sticky {
+    position: static !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr 1fr !important;
+    gap: 1rem !important;
+    margin-bottom: 1.5rem !important;
+  }
+  .lg\:grid-cols-\[1fr_2\.1fr\] { display: block !important; }
+  .sm\:grid-cols-2 {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 1rem !important;
+  }
+
+  /* ══════════════════════════════
+     RISK CARDS
+  ══════════════════════════════ */
+  .border-rose-100 { border-color: #e5e7eb !important; border-width: 1px !important; }
+  .bg-rose-50\/20  { background: #fafafa !important; border-left: 3px solid #666 !important; }
+
+  /* ══════════════════════════════
+     SCORE WHEEL
+  ══════════════════════════════ */
+  .progress-ring-circle { stroke: #555 !important; }
+
+  /* ══════════════════════════════
+     PAGE BREAKS
+  ══════════════════════════════ */
+  /* Remove hard page breaks between sections to keep it compact */
+  .print-page-break {
+    page-break-before: auto !important;
+    break-before: auto !important;
+    margin-top: 1.5rem !important;
+  }
+  .avoid-break, .rounded-2xl, .rounded-3xl, .divide-y > div, .grid > div {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  h1, h2, h3, h4, h5, h6 { page-break-after: avoid !important; break-after: avoid !important; }
+
+  /* ══════════════════════════════
+     FOOTER
+  ══════════════════════════════ */
+  .print-footer {
+    display: block !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 1cm !important;
+    background: #fff !important;
+    border-top: 1px solid #ddd !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0 1.5cm !important;
+    font-size: 7pt !important;
+    color: #888 !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+  }
+
+  /* ══════════════════════════════
+     TYPOGRAPHY & COLORS
+  ══════════════════════════════ */
+  p, li   { font-size: 9.5pt !important; line-height: 1.5 !important; color: #444 !important; }
+  strong  { color: #111 !important; font-weight: 700 !important; }
+  a       { color: #555 !important; text-decoration: underline !important; }
+
+  .text-xs   { font-size: 8pt !important; }
+  .text-sm   { font-size: 9pt !important; }
+  .text-base { font-size: 9.5pt !important; }
+  .text-lg   { font-size: 11pt !important; }
+  .text-xl   { font-size: 13pt !important; }
+  .text-2xl  { font-size: 15pt !important; }
+  .text-3xl  { font-size: 18pt !important; }
+
+  .text-ink    { color: #111 !important; }
+  .text-ink\/40{ color: #888 !important; }
+  .text-ink\/50{ color: #777 !important; }
+  .text-ink\/60{ color: #666 !important; }
+  .text-ink\/70{ color: #555 !important; }
+  .text-ink\/75{ color: #444 !important; }
+  .text-ink\/80{ color: #333 !important; }
+  .text-moss   { color: #555 !important; } /* muted */
+  .text-copper { color: #555 !important; } /* muted */
+
+  /* ══════════════════════════════
+     SPACING (Compact & Professional)
+  ══════════════════════════════ */
+  .space-y-6 > * + * { margin-top: 1rem !important; }
+  .space-y-4 > * + * { margin-top: 0.75rem !important; }
+  .space-y-3 > * + * { margin-top: 0.5rem !important; }
+  .p-6, .sm\:p-8     { padding: 1rem !important; }
+  .p-5                { padding: 0.8rem !important; }
+  .p-4                { padding: 0.75rem !important; }
+  .mb-4               { margin-bottom: 0.75rem !important; }
+  .gap-8              { gap: 1.25rem !important; }
+  .gap-6              { gap: 1rem !important; }
+  .gap-5              { gap: 0.75rem !important; }
 }
 
 /* Tab visibility on screen vs print */
@@ -162,4 +331,3 @@ textarea {
     display: none !important;
   }
 }
-
