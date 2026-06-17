@@ -247,6 +247,29 @@ This document outlines the REST API endpoints available in the backend service. 
         "rationale": "Keeps competitive analysis fresh."
       }
     ],
+    "swot_analysis": {
+      "strengths": ["Strong engineering team"],
+      "weaknesses": ["Lack of marketing budget"],
+      "opportunities": ["Growing market for AI validation"],
+      "threats": ["Incumbent players adding AI"]
+    },
+    "go_to_market": {
+      "distribution_channels": ["Product Hunt", "Twitter", "IndieHackers"],
+      "customer_acquisition_strategy": "Content marketing and SEO",
+      "early_adopter_profile": "Solopreneurs shipping multiple products"
+    },
+    "next_steps": [
+      {
+        "action_item": "Build landing page",
+        "priority": "High",
+        "timeframe": "Week 1"
+      }
+    ],
+    "unit_economics": {
+      "revenue_streams": ["SaaS subscriptions", "Pay-per-report"],
+      "cost_structure": ["LLM API costs", "Hosting"],
+      "estimated_margin_potential": "High (70%+)"
+    },
     "recommendation": {
       "decision": "Build",
       "rationale": "Clear problem with a high willingness to try solutions.",

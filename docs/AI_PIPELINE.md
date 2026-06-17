@@ -52,7 +52,7 @@ The prompt is constructed centrally in `app/utils/prompt_builder.py`. The strate
 1.  **Persona Assignment:** "You are an expert startup analyst and venture capital researcher."
 2.  **Instruction Framing:** Explicitly telling the model to "Be realistic, critical, and data-aware. Do not be overly optimistic."
 3.  **Context Injection:** The live web search results, target region, and budget are injected as explicit context blocks. The current UTC date is also injected so the LLM has temporal awareness.
-4.  **Task Breakdown:** A numbered list of 11 specific analytical tasks (e.g., "Assess market potential...", "Identify 3 to 5 major failure risks...", "Extract 2 to 5 specific search reference links").
+4.  **Task Breakdown:** A numbered list of explicit analytical tasks covering core viability, SWOT, go-to-market strategy, unit economics, action plans, and extracting search reference links.
 5.  **Strict Schema Definition:** The prompt provides an exact, deeply nested JSON template that the LLM must mirror, including the new `references` array. It strictly defines enum values required by the system (e.g., `"threat_level": "High|Medium|Low"`).
 
 ## Gemini Integration

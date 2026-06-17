@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Evaluating startup ideas is traditionally a manual, subjective, and time-consuming process. Founders often rely on gut feeling or limited anecdotal feedback rather than structured analysis. The Venture Intelligence Platform addresses this problem by providing a structured, data-driven, AI-powered validation engine. By inputting a startup idea, target region, and budget, users receive an automated, objective evaluation covering industry context, competitive analysis, market potential, risks, and a final scoring rubric.
+Evaluating startup ideas is traditionally a manual, subjective, and time-consuming process. Founders often rely on gut feeling or limited anecdotal feedback rather than structured analysis. The Venture Intelligence Platform addresses this problem by providing a structured, data-driven, AI-powered validation engine. By inputting a startup idea, target region, and budget, users receive an automated, objective evaluation covering industry context, competitive analysis, market potential, risks, SWOT analysis, go-to-market strategy, unit economics, and a final scoring rubric.
 
 ## Product Vision
 
@@ -12,7 +12,7 @@ The platform aims to democratize access to high-quality venture analysis. It ser
 
 The Venture Intelligence Platform is a web-based application built with a modern client-server architecture. 
 
-*   **Frontend:** A React-based Single Page Application (SPA) built with Vite and Tailwind CSS, responsible for user authentication, idea submission, and visualizing the complex AI-generated reports.
+*   **Frontend:** A React-based Single Page Application (SPA) built with Vite and Tailwind CSS, responsible for user authentication, idea submission, and visualizing the complex AI-generated reports (including dynamic SVG Radar charts and a professional A4-optimized PDF export).
 *   **Backend:** A RESTful API built with FastAPI (Python) that handles request validation, user management, rate limiting, orchestration of search and AI services, and database persistence.
 *   **Database:** PostgreSQL, accessed via SQLAlchemy ORM, used to store user accounts, rate limits, and the generated venture reports (including raw JSON payloads).
 *   **AI & Search Layer:** The core intelligence is powered by Gemini 2.5 Flash, augmented by live web search using the DuckDuckGo Search (`ddgs`) library to ground the AI's analysis in real-world, current data.

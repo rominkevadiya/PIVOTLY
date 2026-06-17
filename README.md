@@ -21,7 +21,8 @@ Unlike a generic AI wrapper, the platform uses a purpose-built prompt, strict JS
 - PostgreSQL persistence with SQLAlchemy and JSONB
 - Alembic database migration structure
 - Report retrieval by UUID (scoped to owner)
-- Clean React report viewing page with collapsible section cards
+- Clean React report viewing page with SVG Radar chart and highly professional, minimalist A4-optimised PDF export
+- Deeply enriched report generation (SWOT, Go-To-Market, Unit Economics, Prioritised Action Plan)
 - Recommendation badge for `Build`, `Pivot`, `Research Further`, and `Avoid`
 - Environment-based backend and frontend configuration
 - Global backend exception handling
@@ -339,6 +340,29 @@ Success response `200 OK`:
     "failure_risks": [],
     "opportunity_gaps": [],
     "improvement_suggestions": [],
+    "swot_analysis": {
+      "strengths": ["string"],
+      "weaknesses": ["string"],
+      "opportunities": ["string"],
+      "threats": ["string"]
+    },
+    "go_to_market": {
+      "distribution_channels": ["string"],
+      "customer_acquisition_strategy": "string",
+      "early_adopter_profile": "string"
+    },
+    "next_steps": [
+      {
+        "action_item": "string",
+        "priority": "High",
+        "timeframe": "string"
+      }
+    ],
+    "unit_economics": {
+      "revenue_streams": ["string"],
+      "cost_structure": ["string"],
+      "estimated_margin_potential": "string"
+    },
     "recommendation": {
       "decision": "Research Further",
       "rationale": "string",
