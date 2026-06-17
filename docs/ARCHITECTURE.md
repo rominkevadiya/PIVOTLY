@@ -106,25 +106,11 @@ The backend is built with FastAPI, strictly adhering to an n-tier architecture p
 
 ## Database Architecture
 
-The system uses PostgreSQL, with the schema defined via SQLAlchemy declarative models (`app/models/`).
-
-*   **`users` table:** Stores user accounts.
-    *   Columns: `id` (UUID), `email`, `full_name`, `hashed_password`, `is_active`, timestamps.
-*   **`reports` table:** Stores generated venture analyses.
-    *   Columns: `id` (UUID), `user_id` (Foreign Key to users), `idea_text`, `industry`, `market_potential`, `recommendation`, `created_at`.
-    *   Crucial implementation detail: The full AI analysis payload is stored in a native `JSONB` column (`report_json`), allowing flexible storage while maintaining a strict schema via Pydantic on retrieval.
-*   **`rate_limits` table:** Tracks API usage.
-    *   Columns: `id`, `user_id` (Foreign Key), `action`, `window_date`, `count`, `updated_at`.
-    *   Uses a unique constraint on `(user_id, action, window_date)` to enable atomic upsert operations (`ON CONFLICT DO UPDATE`).
+For complete details on the PostgreSQL schema, `JSONB` columns, tables (`users`, `reports`, `rate_limits`), and relationships, see [Database Design](DATABASE.md).
 
 ## AI Analysis Architecture
 
-The AI layer relies heavily on rigorous prompting and schema enforcement rather than specialized model fine-tuning.
-
-1.  **Context Gathering (`SearchService`):** Before generating an analysis, the system fetches live web results for competitors using the `ddgs` library.
-2.  **Prompt Construction (`prompt_builder.py`):** The user's idea, constraints (region, budget), and live search context are interpolated into a massive, highly specific prompt. The prompt explicitly demands a strict JSON structure.
-3.  **Generation (`AIService`):** The prompt is sent to the Gemini model configured via `GEMINI_MODEL` env var (default `gemini-1.5-flash`, `.env.example` sets `gemini-2.5-flash`) using the `google-genai` SDK, with `response_mime_type="application/json"` and `temperature=0.4` to reduce hallucinations.
-4.  **Extraction & Validation (`json_parser.py`):** The raw text output is aggressively parsed to extract the JSON object (stripping potential markdown fences like ` ```json `). The resulting dictionary is passed to the Pydantic `VentureReport` schema for rigorous structural validation before being accepted.
+For complete details on context gathering (`ddgs`), prompt construction, Gemini integration, and the rigorous JSON extraction process, see the [AI Pipeline documentation](AI_PIPELINE.md).
 
 ## Request Lifecycle (Example: Analyze Idea)
 

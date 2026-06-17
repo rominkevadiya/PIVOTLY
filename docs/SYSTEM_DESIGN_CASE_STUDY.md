@@ -41,15 +41,7 @@ The Venture Intelligence Platform is a web-based application built with a modern
 
 ## Application Workflow
 
-1.  **User Authentication:** The user registers or logs in via the `/api/v1/auth` endpoints. The backend issues a JWT (JSON Web Token), which the React frontend stores in `localStorage`.
-2.  **Idea Submission:** The authenticated user navigates to the `/analyze` page and submits an idea, optionally providing a target region and budget.
-3.  **Rate Limiting Check:** The FastAPI backend receives the request at `POST /analyze`. It first checks the `rate_limits` table to ensure the user hasn't exceeded their daily allowance (currently 5 analyses/day).
-4.  **Live Search Augmentation:** The `SearchService` executes an asynchronous web search via `ddgs` using the prompt: `"competitors for startup idea: {idea_text}"`. The results are formatted into a context string.
-5.  **Prompt Construction:** The `prompt_builder` constructs a strict prompt incorporating the user's idea, region, budget, the live search context, and a rigorous JSON schema requirement.
-6.  **AI Generation:** The `AIService` sends the prompt to the Gemini API. It enforces a JSON response format.
-7.  **Validation & Parsing:** The raw string response from Gemini is cleaned using `json_parser.py` (to remove markdown fences) and validated against the Pydantic `VentureReport` schema.
-8.  **Persistence:** The validated report data is serialized into a dictionary and saved to the PostgreSQL `reports` table as `JSONB`, linked to the user's ID.
-9.  **Response & Rendering:** The backend returns the new `report_id`. The frontend router navigates to `/reports/:reportId`, fetches the full report, and renders the data using custom UI components (e.g., `ReportSectionCard`).
+For a detailed, step-by-step sequence of the backend request lifecycle, please see [Architecture Overview](ARCHITECTURE.md#request-lifecycle-example-analyze-idea).
 
 ## Key Engineering Challenges
 
