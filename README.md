@@ -32,7 +32,6 @@ Unlike a generic AI wrapper, the platform uses a purpose-built prompt, strict JS
 - Competitor intelligence with external data sources
 - Market intelligence modules
 - MCP integrations
-- AWS deployment
 - PDF export and sharing workflows
 
 ## Documentation
@@ -247,9 +246,9 @@ http://localhost:5173
 - Market intelligence modules
 - Idea scoring rubric and PDF exports
 
-### Phase 5: Deployment
-- AWS deployment (EC2/Elastic Beanstalk)
-- Production observability and logging
+### Phase 5: Deployment (Completed)
+- AWS deployment (EC2)
+- Production observability and logging (systemd/journald)
 - Managed PostgreSQL (AWS RDS)
 
 ## Screenshots

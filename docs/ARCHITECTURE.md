@@ -112,6 +112,18 @@ For complete details on the PostgreSQL schema, `JSONB` columns, tables (`users`,
 
 For complete details on context gathering (`ddgs`), prompt construction, Gemini integration, and the rigorous JSON extraction process, see the [AI Pipeline documentation](AI_PIPELINE.md).
 
+## Deployment Architecture
+
+The platform is deployed in a production-ready AWS environment using a decoupled, multi-node architecture:
+
+*   **Application Server (AWS EC2)**:
+    *   **Reverse Proxy**: Nginx handles incoming HTTP traffic and serves the compiled React/Vite static assets directly from the filesystem. It also acts as a reverse proxy forwarding `/api` requests to the backend.
+    *   **WSGI/ASGI Server**: Gunicorn orchestrates Uvicorn workers to serve the FastAPI application, utilizing multiple workers to handle concurrent connections.
+    *   **Process Management**: `systemd` manages the Gunicorn daemon (`pivotly.service`), ensuring the backend runs in the background, writes logs to `journald`, and automatically restarts on failure.
+*   **Database Server (AWS RDS)**: 
+    *   Managed PostgreSQL database hosted on AWS Relational Database Service (RDS).
+    *   Provides automated backups, scaling, and high availability. The database is securely accessed via the backend in a VPC using SSL encryption (`sslmode=require`).
+
 ## Request Lifecycle (Example: Analyze Idea)
 
 1.  **Client:** POSTs to `/api/v1/analyze` with `{"idea_text": "...", "region": "...", "budget_range": "..."}` and a Bearer JWT.
