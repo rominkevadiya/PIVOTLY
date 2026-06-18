@@ -56,30 +56,104 @@ textarea {
   100% { opacity: 1; transform: translateY(0); }
 }
 
+/* ─────────────────────────────────────────────────────────────
+   SCREEN: Tab visibility — only the active tab panel is shown
+───────────────────────────────────────────────────────────── */
+@media screen {
+  .tab-panel:not(.active) {
+    display: none !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PRINT STYLES
+   Three root-cause fixes applied:
+   1. Kill CSS animations — fadeInUp starts at opacity:0 which
+      makes cards invisible when the browser captures print.
+   2. Show ALL tab panels (every section becomes a page group).
+   3. Scoped section:first-of-type so only the cover header gets
+      the "title block" treatment, not every ReportSectionCard.
+   4. Keep ReportSectionCard <button> visible so the h2 title
+      shows (was hidden by the old `button { display:none }` rule).
+───────────────────────────────────────────────────────────── */
 @media print {
   @page {
     size: A4;
-    margin: 1.5cm; /* standard professional margin */
+    margin: 1.5cm;
+  }
+
+  /* ── FIX 1: Kill all animations & transitions ── */
+  /* fadeInUp starts at opacity:0 — without this, every card is blank */
+  *, *::before, *::after {
+    animation: none !important;
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+    transition: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  /* Restore opacity and transform to their natural/computed values */
+  /* (only override the animated helpers, not inline opacity) */
+  .animate-fade-in-up {
+    opacity: 1 !important;
+    transform: none !important;
   }
 
   body {
     background: #fff !important;
     color: #333 !important;
     font-size: 10pt !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
   }
 
-  /* Hide UI elements */
-  .no-print, header, nav, button {
+  /* ── FIX 2: Show ALL tab panels in print ── */
+  .tab-panel,
+  .tab-panel:not(.active),
+  .tab-panel.active {
+    display: block !important;
+    visibility: visible !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin-top: 1.5rem !important;
+  }
+
+  /* ── FIX 3: Collapsible card content must be visible ── */
+  /* The grid-rows-[0fr] animation collapses children to zero height */
+  .glass-panel > div[class*="grid"] {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  /* The overflow-hidden inner wrapper clips content in the grid context */
+  .glass-panel > div[class*="grid"] > div {
+    overflow: visible !important;
+    height: auto !important;
+    display: block !important;
+  }
+
+  /* ── FIX 4: Hide UI elements but KEEP ReportSectionCard titles ── */
+  /* Old rule was `button { display:none }` which hid card titles too */
+  .no-print, header, nav {
+    display: none !important;
+  }
+  .no-print button, header button, nav button {
+    display: none !important;
+  }
+  /* Keep the card toggle button visible (title lives inside it), just hide the chevron */
+  .glass-panel > button {
+    display: block !important;
+    pointer-events: none !important;
+    cursor: default !important;
+  }
+  .glass-panel > button > svg {
     display: none !important;
   }
 
   /* ══════════════════════════════
-     COVER BLOCK
-     Clean, professional, left-aligned
+     COVER BLOCK — scoped only to the top-level header <section>
+     Previously `section:first-of-type` matched EVERY first card in
+     each tab panel, breaking their inner layout.
   ══════════════════════════════ */
-  section:first-of-type {
+  .space-y-10 > section:first-of-type {
     background: #fff !important;
     border: none !important;
     border-radius: 0 !important;
@@ -93,12 +167,12 @@ textarea {
     display: block !important;
   }
 
-  /* Force the flex container to block so it flows nicely */
-  section:first-of-type > div {
+  /* Force the header's flex wrapper to block flow */
+  .space-y-10 > section:first-of-type > div:first-child {
     display: block !important;
   }
-  
-  section:first-of-type h1 {
+
+  .space-y-10 > section:first-of-type h1 {
     color: #111 !important;
     font-size: 24pt !important;
     font-weight: 800 !important;
@@ -108,7 +182,7 @@ textarea {
     text-align: left !important;
   }
 
-  section:first-of-type p {
+  .space-y-10 > section:first-of-type p {
     color: #555 !important;
     font-size: 10.5pt !important;
     line-height: 1.5 !important;
@@ -118,7 +192,7 @@ textarea {
   }
 
   /* Industry pill */
-  section:first-of-type .bg-moss\/10 {
+  .space-y-10 > section:first-of-type .bg-moss\/10 {
     background: none !important;
     color: #555 !important;
     font-size: 8pt !important;
@@ -131,7 +205,7 @@ textarea {
     margin-bottom: 0.25rem !important;
   }
 
-  section:first-of-type .text-ink\/40 { color: #888 !important; font-size: 8pt !important; }
+  .space-y-10 > section:first-of-type .text-ink\/40 { color: #888 !important; font-size: 8pt !important; }
 
   /* Print verdict strip on cover */
   .print-verdict-strip {
@@ -162,7 +236,6 @@ textarea {
 
   /* ══════════════════════════════
      SECTION BANNERS
-     Minimalist dividers
   ══════════════════════════════ */
   .pdf-section-banner {
     display: flex !important;
@@ -190,24 +263,22 @@ textarea {
   }
 
   /* ══════════════════════════════
-     CARDS
-     Clean, compact, 1px border
+     CARDS — Clean, compact, 1px border
   ══════════════════════════════ */
   .rounded-3xl, .rounded-2xl {
     border-radius: 4px !important;
   }
 
   .bg-white\/40, .bg-white\/50, .bg-white\/60, .bg-white\/70,
-  .shadow-panel, .backdrop-blur-md, .backdrop-blur-sm {
+  .shadow-panel, .backdrop-blur-md, .backdrop-blur-sm, .backdrop-blur-xl, .glass-panel {
     background: #fff !important;
     border: 1px solid #ddd !important;
     box-shadow: none !important;
     backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
-  .lg\:sticky { box-shadow: none !important; border: none !important; }
-
-  /* Card inner title bars */
+  /* Card inner dividers */
   .border-b { border-color: #eee !important; border-width: 1px !important; }
   .border-white\/50 { border-color: #eee !important; border-width: 1px !important; }
 
@@ -231,6 +302,8 @@ textarea {
     grid-template-columns: 1fr 1fr 1fr !important;
     gap: 1rem !important;
     margin-bottom: 1.5rem !important;
+    box-shadow: none !important;
+    border: none !important;
   }
   .lg\:grid-cols-\[1fr_2\.1fr\] { display: block !important; }
   .sm\:grid-cols-2 {
@@ -246,20 +319,14 @@ textarea {
   .bg-rose-50\/20  { background: #fafafa !important; border-left: 3px solid #666 !important; }
 
   /* ══════════════════════════════
-     SCORE WHEEL
-  ══════════════════════════════ */
-  .progress-ring-circle { stroke: #555 !important; }
-
-  /* ══════════════════════════════
      PAGE BREAKS
   ══════════════════════════════ */
-  /* Remove hard page breaks between sections to keep it compact */
   .print-page-break {
     page-break-before: auto !important;
     break-before: auto !important;
     margin-top: 1.5rem !important;
   }
-  .avoid-break, .rounded-2xl, .rounded-3xl, .divide-y > div, .grid > div {
+  .avoid-break, .rounded-2xl, .rounded-3xl, .divide-y > div {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
@@ -269,7 +336,6 @@ textarea {
      FOOTER
   ══════════════════════════════ */
   .print-footer {
-    display: block !important;
     position: fixed !important;
     bottom: 0 !important;
     left: 0 !important;
@@ -309,8 +375,8 @@ textarea {
   .text-ink\/70{ color: #555 !important; }
   .text-ink\/75{ color: #444 !important; }
   .text-ink\/80{ color: #333 !important; }
-  .text-moss   { color: #555 !important; } /* muted */
-  .text-copper { color: #555 !important; } /* muted */
+  .text-moss   { color: #315c4d !important; }
+  .text-copper { color: #b56b3f !important; }
 
   /* ══════════════════════════════
      SPACING (Compact & Professional)
@@ -325,11 +391,4 @@ textarea {
   .gap-8              { gap: 1.25rem !important; }
   .gap-6              { gap: 1rem !important; }
   .gap-5              { gap: 0.75rem !important; }
-}
-
-/* Tab visibility on screen vs print */
-@media screen {
-  .tab-panel:not(.active) {
-    display: none !important;
-  }
 }

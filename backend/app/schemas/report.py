@@ -200,4 +200,5 @@ class ReportSummary(BaseModel):
     industry: str
     market_potential: str
     recommendation: str
+    overall_score: int | None = None
     created_at: datetime

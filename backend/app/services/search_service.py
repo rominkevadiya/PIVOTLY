@@ -1,9 +1,14 @@
 import asyncio
 import logging
+import time
 
 from ddgs import DDGS
 
 logger = logging.getLogger(__name__)
+
+# Simple in-memory cache for search results to avoid DDGS rate limits
+_SEARCH_CACHE: dict[str, tuple[float, str]] = {}
+CACHE_TTL_SECONDS = 3600  # 1 hour cache TTL
 
 
 def _run_ddgs_search(query: str, max_results: int = 5) -> list[dict]:
@@ -21,6 +26,19 @@ async def search_competitors(idea_text: str) -> str:
     Returns a formatted markdown string of titles, URLs, and snippets.
     """
     try:
+        now = time.time()
+        cache_key = idea_text.strip().lower()
+
+        # Check cache first
+        if cache_key in _SEARCH_CACHE:
+            timestamp, cached_result = _SEARCH_CACHE[cache_key]
+            if now - timestamp < CACHE_TTL_SECONDS:
+                logger.info("Using cached web search results for idea.")
+                return cached_result
+            else:
+                # Expired
+                del _SEARCH_CACHE[cache_key]
+
         query = f"competitors for startup idea: {idea_text}"
 
         # Run the blocking DDGS sync call off the event loop
@@ -36,7 +54,9 @@ async def search_competitors(idea_text: str) -> str:
             snippet = res.get("body", "")
             formatted_lines.append(f"- **{title}** ({link}): {snippet}")
 
-        return "\n".join(formatted_lines)
+        result_str = "\n".join(formatted_lines)
+        _SEARCH_CACHE[cache_key] = (time.time(), result_str)
+        return result_str
     except Exception as e:
         logger.error("Failed to query web search: %s", e, exc_info=True)
         return "Live search failed to execute due to connection issue."

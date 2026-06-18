@@ -30,6 +30,7 @@ def list_reports(
             industry=r.industry,
             market_potential=r.market_potential,
             recommendation=r.recommendation,
+            overall_score=r.report_json.get("scoring_rubric", {}).get("overall_score") if isinstance(r.report_json, dict) else None,
             created_at=r.created_at,
         )
         for r in reports

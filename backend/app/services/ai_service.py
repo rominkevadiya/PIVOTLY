@@ -7,7 +7,6 @@ from pydantic import ValidationError
 from app.core.config import Settings
 from app.core.exceptions import AIServiceError
 from app.schemas.report import VentureReport
-from app.utils.json_parser import parse_json_object
 from app.utils.prompt_builder import build_analysis_prompt
 
 logger = logging.getLogger(__name__)
@@ -48,6 +47,7 @@ class AIService:
                     temperature=0.4,
                     max_output_tokens=8192,
                     response_mime_type="application/json",
+                    response_schema=VentureReport,
                 ),
             )
         except Exception as exc:
@@ -71,9 +71,8 @@ class AIService:
     def _parse_and_validate(self, raw_response: str) -> VentureReport:
         """Parse raw Gemini output and validate it against the report schema."""
         try:
-            parsed = parse_json_object(raw_response)
-            return VentureReport.model_validate(parsed)
-        except (ValueError, ValidationError) as exc:
+            return VentureReport.model_validate_json(raw_response)
+        except ValidationError as exc:
             logger.warning("Invalid Gemini response: %s", exc)
             logger.warning("Malformed Gemini payload: %s", raw_response)
             try:

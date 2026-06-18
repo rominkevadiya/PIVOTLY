@@ -199,6 +199,15 @@ export function DashboardPage() {
                             <span className="text-xs text-ink/50 font-bold bg-white/80 px-3 py-1 rounded-lg border border-ink/5">
                               {report.market_potential} Potential
                             </span>
+                            {report.overall_score !== null && report.overall_score !== undefined && (
+                              <span className={`text-xs font-bold px-3 py-1 rounded-lg border ${
+                                report.overall_score >= 80 ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" :
+                                report.overall_score >= 60 ? "bg-amber-500/10 text-amber-800 border-amber-500/20" :
+                                "bg-rose-500/10 text-rose-800 border-rose-500/20"
+                              }`}>
+                                Score: {report.overall_score}/100
+                              </span>
+                            )}
                             <svg
                               className="hidden md:block h-5 w-5 text-ink/30 group-hover:text-moss group-hover:translate-x-1.5 transition duration-300"
                               viewBox="0 0 20 20"

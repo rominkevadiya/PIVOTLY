@@ -10,6 +10,7 @@ import { RadarChart } from "../components/RadarChart";
 import { ReportSectionCard } from "../components/ReportSectionCard";
 import { getReport } from "../services/api";
 import type { ReportResponse } from "../types/report";
+import { flushSync } from "react-dom";
 
 type TabId = "strategy" | "competitors" | "risks" | "action" | "summary";
 
@@ -55,19 +56,41 @@ function ScoreBar({ label, score, reasoning }: { label: string; score: number; r
 
 function ReportContent({ report }: { report: ReportResponse }) {
   const [activeTab, setActiveTab] = useState<TabId>("strategy");
+  const [isPrinting, setIsPrinting] = useState(false);
   const data = report.report_json;
+
+  useEffect(() => {
+    // Keep beforeprint/afterprint for users who use Ctrl+P or the browser menu instead of the button
+    const handleBeforePrint = () => flushSync(() => setIsPrinting(true));
+    const handleAfterPrint = () => setIsPrinting(false);
+
+    window.addEventListener("beforeprint", handleBeforePrint);
+    window.addEventListener("afterprint", handleAfterPrint);
+
+    return () => {
+      window.removeEventListener("beforeprint", handleBeforePrint);
+      window.removeEventListener("afterprint", handleAfterPrint);
+    };
+  }, []);
 
   const createdAt = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(report.created_at));
 
   const handlePrint = () => {
+    // 1. Force React to re-render everything synchronously BEFORE the print dialog!
+    // This bypasses iOS Safari's notorious beforeprint bug.
+    flushSync(() => {
+      setIsPrinting(true);
+    });
+
     const original = document.title;
     document.title = `Pivotly_${(data.overview.one_line_pitch || "Report").replace(/[^a-zA-Z0-9\s]/g, "").trim().replace(/\s+/g, "_").substring(0, 40)}`;
     
-    // Call print synchronously to avoid mobile browser popup blockers
+    // 2. Call print synchronously to avoid mobile browser popup blockers
     window.print();
     
-    // Restore title after a delay to ensure the OS print dialog grabs the new title
+    // 3. Restore everything after a delay
     setTimeout(() => {
+      setIsPrinting(false);
       document.title = original;
     }, 2000);
   };
@@ -134,7 +157,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
       </section>
 
       {/* ── Two-column layout ── */}
-      <div className="grid gap-8 lg:grid-cols-[1fr_2.1fr] items-start">
+      <div className="grid gap-8 lg:grid-cols-[1fr_2.1fr] items-start print:block">
 
         {/* Left sidebar */}
         <div className="lg:sticky lg:top-24 space-y-6 print:w-full print:relative print:grid print:grid-cols-2 print:gap-6 print:space-y-0">
@@ -233,24 +256,24 @@ function ReportContent({ report }: { report: ReportResponse }) {
           </nav>
 
           {/* Tab 1 — Strategy & SWOT */}
-          <div className={`tab-panel space-y-6 print-page-break ${activeTab === "strategy" ? "active" : ""}`}>
+          <div className={`space-y-6 print-page-break print:mt-6 ${activeTab === "strategy" || isPrinting ? "block" : "hidden"}`}>
             {/* Print section banner */}
             <div className="pdf-section-banner hidden print:block">
               <span className="section-num">Section 01</span>
-              <span className="section-title">Strategy &amp; SWOT Analysis</span>
+              <span className="section-title">Strategy &amp; SWOT</span>
             </div>
-            <ReportSectionCard title="Product Summary & Vision">
+            <ReportSectionCard title="Product Summary & Vision" forceOpen={isPrinting}>
               <p className="text-[15px] leading-relaxed text-ink/80">{data.overview.idea_summary}</p>
             </ReportSectionCard>
             <div className="grid gap-6 sm:grid-cols-2">
-              <ReportSectionCard title="Industry & Subsectors">
+              <ReportSectionCard title="Industry & Subsectors" forceOpen={isPrinting}>
                 <div className="space-y-3">
                   <div><span className="text-[10px] font-bold text-ink/40 uppercase block">Sector</span><span className="font-extrabold text-moss">{data.industry.primary_industry}</span></div>
                   <div><span className="text-[10px] font-bold text-ink/40 uppercase block">Subsector</span><span className="font-extrabold text-ink">{data.industry.sub_industry}</span></div>
                   <p className="text-xs text-ink/70 border-t border-ink/5 pt-3 mt-2">{data.industry.industry_context}</p>
                 </div>
               </ReportSectionCard>
-              <ReportSectionCard title="Target Segments">
+              <ReportSectionCard title="Target Segments" forceOpen={isPrinting}>
                 <div className="space-y-3">
                   <div><span className="text-[10px] font-bold text-ink/40 uppercase block">Primary</span><span className="font-extrabold text-ink">{data.target_audience.primary_segment}</span></div>
                   <div><span className="text-[10px] font-bold text-ink/40 uppercase block">Secondary</span><span className="font-extrabold text-ink/80">{data.target_audience.secondary_segment}</span></div>
@@ -262,12 +285,12 @@ function ReportContent({ report }: { report: ReportResponse }) {
           </div>
 
           {/* Tab 2 — Market & Competitors */}
-          <div className={`tab-panel space-y-6 print-page-break ${activeTab === "competitors" ? "active" : ""}`}>
+          <div className={`space-y-6 print-page-break print:mt-6 ${activeTab === "competitors" || isPrinting ? "block" : "hidden"}`}>
             <div className="pdf-section-banner hidden print:block">
               <span className="section-num">Section 02</span>
-              <span className="section-title">Market &amp; Competitor Intelligence</span>
+              <span className="section-title">Market &amp; Competitors</span>
             </div>
-            <ReportSectionCard title="Competitor Intelligence Grid">
+            <ReportSectionCard title="Competitor Intelligence Grid" forceOpen={isPrinting}>
               <div className="grid gap-5 sm:grid-cols-2">
                 {data.competitors.map((c) => (
                   <div key={c.name} className="flex flex-col justify-between rounded-2xl border border-white bg-white/50 p-5 shadow-sm hover:shadow-md transition-all">
@@ -287,7 +310,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
                 ))}
               </div>
             </ReportSectionCard>
-            <ReportSectionCard title="Market Rationale">
+            <ReportSectionCard title="Market Rationale" forceOpen={isPrinting}>
               <div className="space-y-4">
                 <div><span className="text-[10px] font-bold text-ink/40 uppercase block">Addressable Potential</span><p className="font-bold text-moss mt-0.5">{data.market_potential.rationale}</p></div>
                 <p className="text-xs leading-relaxed text-ink/70">{data.market_potential.estimated_market_context}</p>
@@ -296,12 +319,12 @@ function ReportContent({ report }: { report: ReportResponse }) {
           </div>
 
           {/* Tab 3 — Risks & Gaps */}
-          <div className={`tab-panel space-y-6 print-page-break ${activeTab === "risks" ? "active" : ""}`}>
+          <div className={`space-y-6 print-page-break print:mt-6 ${activeTab === "risks" || isPrinting ? "block" : "hidden"}`}>
             <div className="pdf-section-banner hidden print:block">
               <span className="section-num">Section 03</span>
-              <span className="section-title">Risks, Gaps &amp; Improvements</span>
+              <span className="section-title">Risks &amp; Gaps</span>
             </div>
-            <ReportSectionCard title="Failure Risk Analysis">
+            <ReportSectionCard title="Failure Risk Analysis" forceOpen={isPrinting}>
               <div className="grid gap-4 sm:grid-cols-2">
                 {data.failure_risks.map((r) => (
                   <div key={r.risk} className="rounded-2xl border border-rose-100 bg-rose-50/20 p-5 hover:bg-rose-50/50 transition-all space-y-2">
@@ -315,7 +338,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
               </div>
             </ReportSectionCard>
             <div className="grid gap-6 sm:grid-cols-2">
-              <ReportSectionCard title="Opportunity Gaps">
+              <ReportSectionCard title="Opportunity Gaps" forceOpen={isPrinting}>
                 <div className="divide-y divide-ink/5">
                   {data.opportunity_gaps.map((g) => (
                      <div key={g.gap} className="py-3.5 first:pt-0 last:pb-0">
@@ -325,7 +348,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
                   ))}
                 </div>
               </ReportSectionCard>
-              <ReportSectionCard title="Improvement Suggestions">
+              <ReportSectionCard title="Improvement Suggestions" forceOpen={isPrinting}>
                 <div className="divide-y divide-ink/5">
                   {data.improvement_suggestions.map((s) => (
                      <div key={s.suggestion} className="py-3.5 first:pt-0 last:pb-0">
@@ -339,14 +362,14 @@ function ReportContent({ report }: { report: ReportResponse }) {
           </div>
 
           {/* Tab 4 — Action Plan (NEW) */}
-          <div className={`tab-panel space-y-6 print-page-break ${activeTab === "action" ? "active" : ""}`}>
+          <div className={`space-y-6 print-page-break print:mt-6 ${activeTab === "action" || isPrinting ? "block" : "hidden"}`}>
             <div className="pdf-section-banner hidden print:block">
               <span className="section-num">Section 04</span>
-              <span className="section-title">Action Plan &amp; Go-to-Market Strategy</span>
+              <span className="section-title">Action Plan</span>
             </div>
             {/* Next Steps */}
             {data.next_steps && data.next_steps.length > 0 && (
-              <ReportSectionCard title="Prioritised Action Plan">
+              <ReportSectionCard title="Prioritised Action Plan" forceOpen={isPrinting}>
                 <div className="space-y-4">
                   {data.next_steps.sort((a, b) => a.priority - b.priority).map((step) => (
                     <div key={step.priority} className="flex gap-4 border-b border-ink/5 pb-4 last:border-0 last:pb-0">
@@ -366,7 +389,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
 
             {/* Go-to-Market */}
             {data.go_to_market && (
-              <ReportSectionCard title="Go-to-Market Strategy">
+              <ReportSectionCard title="Go-to-Market Strategy" forceOpen={isPrinting}>
                 <p className="text-sm text-ink/80 mb-5">{data.go_to_market.strategy_summary}</p>
                 <div className="space-y-4">
                   {data.go_to_market.phases.map((phase, idx) => (
@@ -392,7 +415,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
 
             {/* Fallback if new data not generated yet */}
             {!data.next_steps && !data.go_to_market && (
-              <ReportSectionCard title="Action Plan">
+              <ReportSectionCard title="Action Plan" forceOpen={isPrinting}>
                 <div className="divide-y divide-ink/5">
                   {data.improvement_suggestions.map((s, i) => (
                     <div key={i} className="py-3.5 first:pt-0 last:pb-0 flex gap-3">
@@ -406,13 +429,13 @@ function ReportContent({ report }: { report: ReportResponse }) {
           </div>
 
           {/* Tab 5 — Executive Summary */}
-          <div className={`tab-panel space-y-6 print-page-break ${activeTab === "summary" ? "active" : ""}`}>
+          <div className={`space-y-6 print-page-break print:mt-6 ${activeTab === "summary" || isPrinting ? "block" : "hidden"}`}>
             <div className="pdf-section-banner hidden print:block">
               <span className="section-num">Section 05</span>
-              <span className="section-title">Executive Summary &amp; Scoring</span>
+              <span className="section-title">Executive Summary</span>
             </div>
             {data.scoring_rubric && (
-              <ReportSectionCard title="Venture Rating Breakdown">
+              <ReportSectionCard title="Venture Rating Breakdown" forceOpen={isPrinting}>
                 <div className="grid md:grid-cols-[1fr_1fr] gap-8 items-start">
                   <div className="space-y-4">
                     {(Object.entries(data.scoring_rubric) as [string, any][])
@@ -428,7 +451,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
                 </div>
               </ReportSectionCard>
             )}
-            <ReportSectionCard title="Strategic Recommendation Rationale">
+            <ReportSectionCard title="Strategic Recommendation Rationale" forceOpen={isPrinting}>
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <RecommendationBadge decision={data.recommendation.decision} />

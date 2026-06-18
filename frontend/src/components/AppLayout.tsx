@@ -18,7 +18,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <div className="min-h-screen flex flex-col text-ink bg-paper/20">
+    <div className="min-h-screen flex flex-col print:block text-ink bg-paper/20">
       {/* Premium Glassmorphic Header */}
       <header className="border-b border-white/30 bg-white/30 backdrop-blur-md sticky top-0 z-50 shadow-[0_2px_20px_rgba(22,32,29,0.03)] no-print">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
@@ -97,7 +97,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 mx-auto w-full max-w-6xl px-6 py-8 sm:py-12">
+      <main className="flex-1 mx-auto w-full max-w-6xl px-6 py-8 sm:py-12 print:block print:p-0">
         {children}
       </main>
 
