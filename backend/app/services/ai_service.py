@@ -46,7 +46,7 @@ class AIService:
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     temperature=0.4,
-                    max_output_tokens=4000,
+                    max_output_tokens=8192,
                     response_mime_type="application/json",
                 ),
             )
