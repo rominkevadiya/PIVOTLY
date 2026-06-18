@@ -24,7 +24,7 @@ async def search_competitors(idea_text: str) -> str:
         query = f"competitors for startup idea: {idea_text}"
 
         # Run the blocking DDGS sync call off the event loop
-        results = await asyncio.to_thread(_run_ddgs_search, query)
+        results = await asyncio.wait_for(asyncio.to_thread(_run_ddgs_search, query), timeout=10.0)
 
         if not results:
             return "No live competitors found via web search."
