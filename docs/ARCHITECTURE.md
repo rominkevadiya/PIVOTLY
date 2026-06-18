@@ -156,9 +156,8 @@ The platform is deployed in a production-ready AWS environment using a decoupled
 *   **`routes`**: React Router DOM configurations mapping URLs to pages.
 *   **`services`**: Network request wrappers managing `fetch` calls and API interactions.
 
-## Current Limitations (Visible in Code)
+## Current Limitations & Future Improvements
 
-1.  **Synchronous AI Generation in HTTP Request:** The `analyze_idea` workflow executes the external `ddgs` web scrape and the Gemini API call sequentially during the HTTP request lifecycle. Long LLM generation times or slow web searches can cause the HTTP request to timeout.
-2.  **Synchronous Web Scraping Library:** The `ddgs` library performs blocking I/O inside an `async def` function without `asyncio.to_thread`. This means the blocking `DDGS().text()` call occupies a FastAPI worker thread for its entire duration, reducing concurrency under load.
-3.  **Database-Backed Rate Limiting:** Rate limiting relies entirely on database `SELECT` and `INSERT ... ON CONFLICT` queries. Under extremely high load, this puts unnecessary transaction pressure on PostgreSQL compared to a fast, in-memory store like Redis.
-4.  **Manual JSON Parsing Strategy:** The system manually strips markdown strings (using `.find('{')` and `.rfind('}')`) in `json_parser.py` instead of exclusively relying on native structured outputs APIs (like Gemini's `response_schema`), meaning unexpected LLM preamble/postamble text can still occasionally break parsing.
+1.  **Long-Lived HTTP Requests:** The `analyze_idea` workflow executes the external `ddgs` web scrape and the Gemini API call within a single HTTP request lifecycle. While we successfully offload these blocking calls to background threads via `asyncio.to_thread()` (preventing FastAPI event loop starvation and server-wide 502s), the client still must hold an open HTTP connection for 20-40 seconds. A future improvement should implement WebSockets or a polling architecture (e.g., Celery/Redis) with progress updates.
+2.  **Database-Backed Rate Limiting:** Rate limiting relies entirely on database `SELECT` and `INSERT ... ON CONFLICT` queries. Under extremely high load, this puts unnecessary transaction pressure on PostgreSQL compared to a fast, in-memory store like Redis.
+3.  **Manual JSON Parsing Strategy:** The system manually strips markdown strings (using `.find('{')` and `.rfind('}')`) in `json_parser.py` instead of exclusively relying on native structured outputs APIs (like Gemini's `response_schema`), meaning unexpected LLM preamble/postamble text can still occasionally break parsing.

@@ -91,7 +91,7 @@ The pipeline contains multiple layers of failure handling:
 
 ## Current Limitations
 
-1.  **Synchronous HTTP Lifecycle:** The entire pipeline (Search -> LLM -> Parse -> DB) runs sequentially during a single HTTP request lifecycle. If Gemini is slow, the HTTP request might timeout on the client side.
+1.  **Long-Lived HTTP Lifecycle:** The entire pipeline (Search -> LLM -> Parse -> DB) executes during a single HTTP request lifecycle. While the backend has been optimized using `asyncio.to_thread()` to prevent the Gemini API call from blocking the main FastAPI event loop (preventing server-wide 502 Bad Gateway errors), the client connection still stays open for up to 30-40 seconds. If Gemini is exceptionally slow, the HTTP request might timeout on the client side.
 2.  **Fragile Parsing:** Relying on `{` and `}` string index parsing is a fragile heuristic that can break if the LLM decides to output multiple JSON blocks or includes curly braces in conversational text before the main object.
 3.  **No Automatic Retries:** If the Pydantic validation fails due to a slight LLM hallucination (e.g., outputting "Moderate" instead of "Medium"), the system immediately fails the user request instead of asking the LLM to correct its output.
 
