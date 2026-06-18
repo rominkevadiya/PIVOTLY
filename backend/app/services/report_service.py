@@ -41,7 +41,15 @@ class ReportService:
 
         # Fetch live competitor context using Tavily Search API
         search_context = await search_competitors(idea_text)
-        report = self.ai_service.generate_report(idea_text, search_context, region, budget_range)
+        
+        import asyncio
+        report = await asyncio.to_thread(
+            self.ai_service.generate_report,
+            idea_text, 
+            search_context, 
+            region, 
+            budget_range
+        )
         
         persisted_report = self.repository.create(
             idea_text=idea_text,
