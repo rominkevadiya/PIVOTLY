@@ -1,6 +1,6 @@
 """Prompt construction for venture analysis."""
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 
 def build_analysis_prompt(
@@ -10,7 +10,7 @@ def build_analysis_prompt(
     budget_range: str | None = None,
 ) -> str:
     """Build the strict JSON prompt used for Gemini analysis."""
-    analysis_date = datetime.now(UTC).date().isoformat()
+    analysis_date = datetime.now(timezone.utc).date().isoformat()
 
     search_section = ""
     if search_context:
