@@ -55,16 +55,21 @@ function ScoreBar({ label, score, reasoning }: { label: string; score: number; r
 
 function ReportContent({ report }: { report: ReportResponse }) {
   const [activeTab, setActiveTab] = useState<TabId>("strategy");
-  const [isPrinting, setIsPrinting] = useState(false);
   const data = report.report_json;
 
   const createdAt = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(report.created_at));
 
   const handlePrint = () => {
-    setIsPrinting(true);
     const original = document.title;
     document.title = `Pivotly_${(data.overview.one_line_pitch || "Report").replace(/[^a-zA-Z0-9\s]/g, "").trim().replace(/\s+/g, "_").substring(0, 40)}`;
-    setTimeout(() => { window.print(); setIsPrinting(false); document.title = original; }, 150);
+    
+    // Call print synchronously to avoid mobile browser popup blockers
+    window.print();
+    
+    // Restore title after a delay to ensure the OS print dialog grabs the new title
+    setTimeout(() => {
+      document.title = original;
+    }, 2000);
   };
 
   const overallScore = Number(data.scoring_rubric?.overall_score || 0);
@@ -85,8 +90,6 @@ function ReportContent({ report }: { report: ReportResponse }) {
     { id: "action", label: "Action Plan" },
     { id: "summary", label: "Executive Summary" },
   ];
-
-  const show = (tab: TabId) => isPrinting || activeTab === tab;
 
   return (
     <div className="space-y-10 print:space-y-8 print:p-0">
@@ -230,7 +233,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
           </nav>
 
           {/* Tab 1 — Strategy & SWOT */}
-          <div className={`tab-panel space-y-6 print-page-break ${show("strategy") ? "active" : ""}`}>
+          <div className={`tab-panel space-y-6 print-page-break ${activeTab === "strategy" ? "active" : ""}`}>
             {/* Print section banner */}
             <div className="pdf-section-banner hidden print:block">
               <span className="section-num">Section 01</span>
@@ -259,7 +262,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
           </div>
 
           {/* Tab 2 — Market & Competitors */}
-          <div className={`tab-panel space-y-6 print-page-break ${show("competitors") ? "active" : ""}`}>
+          <div className={`tab-panel space-y-6 print-page-break ${activeTab === "competitors" ? "active" : ""}`}>
             <div className="pdf-section-banner hidden print:block">
               <span className="section-num">Section 02</span>
               <span className="section-title">Market &amp; Competitor Intelligence</span>
@@ -293,7 +296,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
           </div>
 
           {/* Tab 3 — Risks & Gaps */}
-          <div className={`tab-panel space-y-6 print-page-break ${show("risks") ? "active" : ""}`}>
+          <div className={`tab-panel space-y-6 print-page-break ${activeTab === "risks" ? "active" : ""}`}>
             <div className="pdf-section-banner hidden print:block">
               <span className="section-num">Section 03</span>
               <span className="section-title">Risks, Gaps &amp; Improvements</span>
@@ -315,20 +318,20 @@ function ReportContent({ report }: { report: ReportResponse }) {
               <ReportSectionCard title="Opportunity Gaps">
                 <div className="divide-y divide-ink/5">
                   {data.opportunity_gaps.map((g) => (
-                    <div key={g.gap} className="py-3.5 first:pt-0 last:pb-0">
-                      <p className="font-bold text-ink text-xs">{g.gap}</p>
-                      <p className="text-xs text-ink/70 mt-1">{g.description}</p>
-                    </div>
+                     <div key={g.gap} className="py-3.5 first:pt-0 last:pb-0">
+                       <p className="font-bold text-ink text-xs">{g.gap}</p>
+                       <p className="text-xs text-ink/70 mt-1">{g.description}</p>
+                     </div>
                   ))}
                 </div>
               </ReportSectionCard>
               <ReportSectionCard title="Improvement Suggestions">
                 <div className="divide-y divide-ink/5">
                   {data.improvement_suggestions.map((s) => (
-                    <div key={s.suggestion} className="py-3.5 first:pt-0 last:pb-0">
-                      <p className="font-bold text-moss text-xs">{s.suggestion}</p>
-                      <p className="text-xs text-ink/70 mt-1">{s.rationale}</p>
-                    </div>
+                     <div key={s.suggestion} className="py-3.5 first:pt-0 last:pb-0">
+                       <p className="font-bold text-moss text-xs">{s.suggestion}</p>
+                       <p className="text-xs text-ink/70 mt-1">{s.rationale}</p>
+                     </div>
                   ))}
                 </div>
               </ReportSectionCard>
@@ -336,7 +339,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
           </div>
 
           {/* Tab 4 — Action Plan (NEW) */}
-          <div className={`tab-panel space-y-6 print-page-break ${show("action") ? "active" : ""}`}>
+          <div className={`tab-panel space-y-6 print-page-break ${activeTab === "action" ? "active" : ""}`}>
             <div className="pdf-section-banner hidden print:block">
               <span className="section-num">Section 04</span>
               <span className="section-title">Action Plan &amp; Go-to-Market Strategy</span>
@@ -403,7 +406,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
           </div>
 
           {/* Tab 5 — Executive Summary */}
-          <div className={`tab-panel space-y-6 print-page-break ${show("summary") ? "active" : ""}`}>
+          <div className={`tab-panel space-y-6 print-page-break ${activeTab === "summary" ? "active" : ""}`}>
             <div className="pdf-section-banner hidden print:block">
               <span className="section-num">Section 05</span>
               <span className="section-title">Executive Summary &amp; Scoring</span>
