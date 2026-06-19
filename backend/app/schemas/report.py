@@ -36,19 +36,13 @@ class TargetAudienceSection(BaseModel):
 
 
 class CompetitorItem(BaseModel):
-    """Competitor entry."""
+    """Simplified competitor entry."""
 
     name: str = Field(..., min_length=1)
     website: str | None = Field(default=None, description="URL of the competitor website")
-    category: str = Field(..., min_length=1, description="e.g. SaaS, Marketplace, Hardware")
     competitor_type: Literal["Direct", "Indirect", "Substitute"] = Field(..., description="Classification of competitive threat")
     description: str = Field(..., min_length=1)
-    strength: str = Field(..., min_length=1)
     threat_level: Rating
-    reason_for_inclusion: str = Field(..., min_length=1, description="Rationale for why this competitor is relevant")
-    evidence: str = Field(..., min_length=1, description="Direct quote or fact from search verifying this competitor")
-    source_url: str | None = Field(default=None, description="URL source for the evidence")
-    confidence_score: int = Field(..., ge=1, le=100)
 
 
 class MarketPotentialSection(BaseModel):
@@ -68,11 +62,9 @@ class MarketPotentialSection(BaseModel):
 class FailureRiskItem(BaseModel):
     """Failure risk entry."""
 
-    risk: str = Field(..., min_length=1)
+    title: str = Field(..., min_length=1)
     description: str = Field(..., min_length=1)
     severity: Rating
-    evidence: str = Field(..., description="Historical precedent or data proving this risk.")
-    confidence_score: int = Field(..., ge=1, le=100)
 
 
 class OpportunityGapItem(BaseModel):
@@ -99,74 +91,32 @@ class RecommendationSection(BaseModel):
     confidence_score: int = Field(..., ge=1, le=100)
 
 
-class ScoreCategory(BaseModel):
-    """A scored category with reasoning."""
-
-    score: int = Field(..., ge=1, le=10, description="Score from 1 to 10")
-    reasoning: str = Field(..., min_length=1)
-
-
 class ScoringRubricSection(BaseModel):
     """Idea scoring rubric."""
 
-    market_size: ScoreCategory
-    competitive_advantage: ScoreCategory
-    technical_feasibility: ScoreCategory
-    monetization_potential: ScoreCategory
-    founder_fit: ScoreCategory
+    market_size_score: int = Field(..., ge=1, le=10, description="Score from 1 to 10")
+    competitive_advantage_score: int = Field(..., ge=1, le=10, description="Score from 1 to 10")
+    technical_feasibility_score: int = Field(..., ge=1, le=10, description="Score from 1 to 10")
+    monetization_potential_score: int = Field(..., ge=1, le=10, description="Score from 1 to 10")
+    founder_fit_score: int = Field(..., ge=1, le=10, description="Score from 1 to 10")
     overall_score: int = Field(..., ge=1, le=100, description="Overall score out of 100")
+    overall_rationale: str = Field(..., min_length=1, description="Global rationale for these scores")
 
-
-class ReferenceItem(BaseModel):
-    """Reference link or source cited for analysis."""
-
-    name: str = Field(..., min_length=1)
-    url: str = Field(..., min_length=1)
-
-
-class ContrarianAnalysisSection(BaseModel):
-    """Contrarian analysis forcing Gemini to challenge its own conclusions."""
-
-    counterarguments: list[str] = Field(..., min_length=2)
-    alternative_interpretations: list[str] = Field(..., min_length=2)
-    recommendation_risks: list[str] = Field(..., min_length=2)
-
-
-class InvestorVerdictSection(BaseModel):
-    """Investor verdict and reasoning."""
-
-    would_invest: bool
-    investment_confidence: int = Field(..., ge=1, le=100)
-    investment_reasoning: str = Field(..., min_length=1)
-    expected_concerns: list[str] = Field(..., min_length=2, description="What an investor will grill you on")
-    potential_strengths: list[str] = Field(..., min_length=2, description="What an investor loves about this")
-
-
-# ── Enrichment sections ────────────────────────────────────────────────────────
 
 class SwotSection(BaseModel):
     """Explicit AI-generated SWOT analysis."""
 
-    strengths: list[str] = Field(..., min_length=2, max_length=5)
-    weaknesses: list[str] = Field(..., min_length=2, max_length=5)
-    opportunities: list[str] = Field(..., min_length=2, max_length=5)
-    threats: list[str] = Field(..., min_length=2, max_length=5)
-
-
-class GoToMarketPhase(BaseModel):
-    """A single phase in the go-to-market plan."""
-
-    phase: str = Field(..., min_length=1, description="e.g. 'Phase 1 – Launch'")
-    duration: str = Field(..., min_length=1, description="e.g. 'Months 1-3'")
-    actions: list[str] = Field(..., min_length=1, max_length=5)
-    channel: str = Field(..., min_length=1, description="Primary channel, e.g. 'Product Hunt'")
+    strengths: list[str] = Field(..., min_length=1, max_length=3)
+    weaknesses: list[str] = Field(..., min_length=1, max_length=3)
+    opportunities: list[str] = Field(..., min_length=1, max_length=3)
+    threats: list[str] = Field(..., min_length=1, max_length=3)
 
 
 class GoToMarketSection(BaseModel):
-    """Go-to-market strategy broken into phases."""
+    """Go-to-market strategy broken into marketing phases."""
 
     strategy_summary: str = Field(..., min_length=1)
-    phases: list[GoToMarketPhase] = Field(..., min_length=2, max_length=4)
+    phases: list[str] = Field(..., min_length=1, max_length=4, description="E.g. ['Phase 1: Product Hunt Launch - Actions...', 'Phase 2: Growth...']")
 
 
 class NextStepItem(BaseModel):
@@ -189,30 +139,38 @@ class UnitEconomicsSection(BaseModel):
     pricing_notes: str = Field(..., min_length=1)
 
 
+class InvestorVerdictSection(BaseModel):
+    """Investor verdict and reasoning."""
+
+    would_invest: bool
+    investment_confidence: int = Field(..., ge=1, le=100)
+    investment_reasoning: str = Field(..., min_length=1)
+    expected_concerns: list[str] = Field(..., min_length=1, max_length=3, description="What an investor will grill you on")
+    potential_strengths: list[str] = Field(..., min_length=1, max_length=3, description="What an investor loves about this")
+
+
 # ── Core report model ──────────────────────────────────────────────────────────
 
 class VentureReport(BaseModel):
-    """Strict report schema expected from Gemini."""
+    """Simplified report schema expected from Gemini."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="allow")  # Allows backward compatibility with extra fields in stored reports
 
     overview: OverviewSection
     industry: IndustrySection
     target_audience: TargetAudienceSection
-    competitors: list[CompetitorItem] = Field(..., min_length=3, max_length=5)
+    competitors: list[CompetitorItem] = Field(..., min_length=1, max_length=5)
     market_potential: MarketPotentialSection
     failure_risks: list[FailureRiskItem] = Field(..., min_length=3, max_length=5)
     opportunity_gaps: list[OpportunityGapItem] = Field(..., min_length=2, max_length=3)
-    improvement_suggestions: list[ImprovementSuggestionItem] = Field(..., min_length=3, max_length=3)
+    improvement_suggestions: list[ImprovementSuggestionItem] = Field(..., min_length=1, max_length=5)
     recommendation: RecommendationSection
     scoring_rubric: ScoringRubricSection | None = None
-    references: list[ReferenceItem] = Field(default_factory=list)
-    # Optional enrichment — backward-compatible with existing stored reports
+    # Enrichment sections — backward-compatible with existing stored reports
     swot: SwotSection | None = None
     go_to_market: GoToMarketSection | None = None
     next_steps: list[NextStepItem] | None = Field(default=None, max_length=5)
     unit_economics: UnitEconomicsSection | None = None
-    contrarian_analysis: ContrarianAnalysisSection | None = None
     investor_verdict: InvestorVerdictSection | None = None
 
 
@@ -238,3 +196,4 @@ class ReportSummary(BaseModel):
     recommendation: str
     overall_score: int | None = None
     created_at: datetime
+

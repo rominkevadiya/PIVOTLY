@@ -7,11 +7,22 @@ export interface ScoreCategory {
 }
 
 export interface ScoringRubricSection {
-  market_size: ScoreCategory;
-  competitive_advantage: ScoreCategory;
-  technical_feasibility: ScoreCategory;
-  monetization_potential: ScoreCategory;
-  founder_fit: ScoreCategory;
+  // Old nested structure
+  market_size?: ScoreCategory;
+  competitive_advantage?: ScoreCategory;
+  technical_feasibility?: ScoreCategory;
+  monetization_potential?: ScoreCategory;
+  founder_fit?: ScoreCategory;
+  
+  // New flat structure
+  market_size_score?: number;
+  competitive_advantage_score?: number;
+  technical_feasibility_score?: number;
+  monetization_potential_score?: number;
+  founder_fit_score?: number;
+  overall_rationale?: string;
+
+  // Shared
   overall_score: number;
 }
 
@@ -33,7 +44,7 @@ export interface GoToMarketPhase {
 
 export interface GoToMarketSection {
   strategy_summary: string;
-  phases: GoToMarketPhase[];
+  phases: Array<string | GoToMarketPhase>;
 }
 
 export interface NextStepItem {
@@ -73,15 +84,15 @@ export interface VentureReport {
   competitors: Array<{
     name: string;
     website?: string;
-    category: string;
+    category?: string;
     competitor_type: "Direct" | "Indirect" | "Substitute";
     description: string;
-    strength: string;
+    strength?: string;
     threat_level: Rating;
-    reason_for_inclusion: string;
-    evidence: string;
+    reason_for_inclusion?: string;
+    evidence?: string;
     source_url?: string;
-    confidence_score: number;
+    confidence_score?: number;
   }>;
   market_potential: {
     rating: Rating;
@@ -95,11 +106,12 @@ export interface VentureReport {
     confidence_score: number;
   };
   failure_risks: Array<{
-    risk: string;
+    risk?: string;
+    title?: string;
     description: string;
     severity: Rating;
-    evidence: string;
-    confidence_score: number;
+    evidence?: string;
+    confidence_score?: number;
   }>;
   opportunity_gaps: Array<{
     gap: string;
@@ -139,6 +151,7 @@ export interface VentureReport {
     recommendation_risks: string[];
   };
 }
+
 
 export interface AnalyzeResponse {
   report_id: string;

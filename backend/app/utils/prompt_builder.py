@@ -34,22 +34,20 @@ DATE: {analysis_date}
 
 Perform this analysis and ensure you provide ALL of the following in the required structured output:
 1. Identify primary industry, sub-industry, and audience segments. Provide a strict 1-100 confidence_score for the industry section based on your knowledge certainty.
-2. Identify 3 to 5 real competitors. For each, provide the name, website, category, competitor_type (Direct, Indirect, Substitute), threat level, and reason_for_inclusion. You MUST provide an `evidence` quote or data point and its `source_url`. Include a 1-100 confidence_score per competitor.
+2. Identify 1 to 5 real competitors. For each, provide the name, website (if available), competitor_type (Direct, Indirect, Substitute), threat level, and a concise description. Do not include categories, strengths, confidence scores, or evidence fields.
 3. Assess market potential (TAM, SAM, SOM). You MUST provide explicit `evidence` and a `source_url` proving these numbers. Include a strict 1-100 confidence_score.
-4. Identify major failure risks. You MUST provide `evidence` for each risk (e.g., historical precedent, regulatory data) and a 1-100 confidence_score. Identify opportunity gaps.
-5. Provide specific improvement suggestions.
+4. Identify 3 to 5 major failure risks, with a `title`, `severity` (High, Medium, Low), and a concise `description`. Do not include confidence scores or evidence quotes. Identify 2 to 3 opportunity gaps.
+5. Provide 1 to 5 specific improvement suggestions.
 6. Provide a final recommendation (Build, Pivot, Research Further, Avoid) with explicit `evidence` supporting the decision and a strict 1-100 confidence_score.
-7. Provide an overall scoring rubric (1-10 per category, overall out of 100).
-8. Cite 2 to 5 specific source websites from the search results.
-9. Provide an explicit SWOT analysis.
-10. Design a phased Go-to-Market strategy.
-11. List concrete next steps with priority and timeframe.
-12. Estimate unit economics (CAC, LTV, revenue model).
-13. INVESTOR VERDICT: Provide a boolean (`would_invest`), an `investment_confidence` (1-100), `investment_reasoning`, AND list 2+ `expected_concerns` and 2+ `potential_strengths`.
-14. CONTRARIAN ANALYSIS: Act as a pessimistic skeptic. Challenge your own conclusions by providing `counterarguments`, `alternative_interpretations`, and `recommendation_risks`.
+7. Provide an overall scoring rubric (market_size_score, competitive_advantage_score, technical_feasibility_score, monetization_potential_score, founder_fit_score from 1-10; overall_score out of 100) with a single global `overall_rationale` explaining these scores.
+8. Provide a SWOT analysis (strengths, weaknesses, opportunities, threats) with 1 to 3 items per quadrant.
+9. Design a phased Go-to-Market strategy with 1 to 4 phases, where each phase is described as a single detailed string (specifying phase name, duration, channel, and key actions in a clean, self-contained statement).
+10. List concrete next steps with priority (1-5), action, rationale, and timeframe.
+11. Estimate unit economics (CAC, LTV, revenue model, pricing notes).
+12. INVESTOR VERDICT: Provide a boolean (`would_invest`), an `investment_confidence` (1-100), `investment_reasoning`, and list 1 to 3 `expected_concerns` and 1 to 3 `potential_strengths`.
 
 IMPORTANT RULES:
 - CONCISENESS: Be extremely concise. Keep all description, rationale, evidence, and reasoning fields short and to the point (maximum 1-2 sentences each). This is critical to fit the entire structured response within the token limit.
-- EVIDENCE: Whenever you make a claim about Market Size, Competitor Strength, or Risk, you MUST populate the `evidence` field with a direct data point or quote, preferably from the LIVE WEB SEARCH RESULTS. Do not hallucinate numbers.
+- EVIDENCE: Whenever you make a claim about Market Size or the Final Recommendation, you MUST populate the `evidence` field with a direct data point or quote, preferably from the LIVE WEB SEARCH RESULTS. Do not hallucinate numbers.
 - CONFIDENCE SCORES: Calculate `confidence_score` (1-100) based strictly on evidence. If you have exact numbers from search results, score > 85. If you are guessing based on parametric memory, score < 50.
 """

@@ -219,39 +219,31 @@ class AIService:
 
                 # Coerce fields to match VentureReport Pydantic constraints
                 if 'competitors' in data:
-                    data['competitors'] = sanitize_list(data['competitors'], 3, 5, lambda: {"name": "Placeholder", "category": "SaaS", "competitor_type": "Direct", "description": "Placeholder", "strength": "Placeholder", "threat_level": "Low", "reason_for_inclusion": "Placeholder", "evidence": "Placeholder", "confidence_score": 50})
+                    data['competitors'] = sanitize_list(data['competitors'], 1, 5, lambda: {"name": "Placeholder", "website": None, "competitor_type": "Direct", "description": "Placeholder", "threat_level": "Low"})
                 if 'failure_risks' in data:
-                    data['failure_risks'] = sanitize_list(data['failure_risks'], 3, 5, lambda: {"risk": "Placeholder", "description": "Placeholder", "severity": "Low", "evidence": "Placeholder", "confidence_score": 50})
+                    data['failure_risks'] = sanitize_list(data['failure_risks'], 3, 5, lambda: {"title": "Placeholder", "description": "Placeholder", "severity": "Low"})
                 if 'opportunity_gaps' in data:
                     data['opportunity_gaps'] = sanitize_list(data['opportunity_gaps'], 2, 3, lambda: {"gap": "Placeholder", "description": "Placeholder"})
                 if 'improvement_suggestions' in data:
-                    data['improvement_suggestions'] = sanitize_list(data['improvement_suggestions'], 3, 3, lambda: {"suggestion": "Placeholder", "rationale": "Placeholder"})
+                    data['improvement_suggestions'] = sanitize_list(data['improvement_suggestions'], 1, 5, lambda: {"suggestion": "Placeholder", "rationale": "Placeholder"})
                 
-                if isinstance(data.get('contrarian_analysis'), dict):
-                    ca = data['contrarian_analysis']
-                    for k in ['counterarguments', 'alternative_interpretations', 'recommendation_risks']:
-                        if k in ca:
-                            ca[k] = sanitize_list(ca[k], 2, None, lambda: "Placeholder")
-                            
                 if isinstance(data.get('investor_verdict'), dict):
                     iv = data['investor_verdict']
                     for k in ['expected_concerns', 'potential_strengths']:
                         if k in iv:
-                            iv[k] = sanitize_list(iv[k], 2, None, lambda: "Placeholder")
+                            iv[k] = sanitize_list(iv[k], 1, 3, lambda: "Placeholder")
 
                 if isinstance(data.get('swot'), dict):
                     sw = data['swot']
                     for k in ['strengths', 'weaknesses', 'opportunities', 'threats']:
                         if k in sw:
-                            sw[k] = sanitize_list(sw[k], 2, 5, lambda: "Placeholder")
+                            sw[k] = sanitize_list(sw[k], 1, 3, lambda: "Placeholder")
 
                 if isinstance(data.get('go_to_market'), dict):
                     gtm = data['go_to_market']
                     if 'phases' in gtm:
-                        gtm['phases'] = sanitize_list(gtm['phases'], 2, 4, lambda: {"phase": "Phase", "duration": "1 month", "actions": ["Action"], "channel": "Direct"})
-                        for p in gtm['phases']:
-                            if isinstance(p, dict) and 'actions' in p:
-                                p['actions'] = sanitize_list(p['actions'], 1, 5, lambda: "Action")
+                        gtm['phases'] = sanitize_list(gtm['phases'], 1, 4, lambda: "Phase description")
+
 
                 if 'next_steps' in data and data['next_steps'] is not None:
                     data['next_steps'] = sanitize_list(data['next_steps'], None, 5, lambda: {"priority": 1, "action": "Action", "rationale": "Rationale", "timeframe": "Week 1"})

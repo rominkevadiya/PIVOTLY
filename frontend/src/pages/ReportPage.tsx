@@ -54,10 +54,33 @@ function ScoreBar({ label, score, reasoning }: { label: string; score: number; r
   );
 }
 
+function normalizeRubric(rubric: any): any {
+  if (!rubric) return null;
+  const normalized = { ...rubric };
+  const keys = [
+    "market_size",
+    "competitive_advantage",
+    "technical_feasibility",
+    "monetization_potential",
+    "founder_fit"
+  ];
+  keys.forEach((key) => {
+    if (rubric[key] && typeof rubric[key] === "object" && "score" in rubric[key]) {
+      // Keep as is
+    } else {
+      const score = rubric[`${key}_score`] ?? rubric[key]?.score ?? 5;
+      const reasoning = rubric.overall_rationale ?? rubric[key]?.reasoning ?? "";
+      normalized[key] = { score, reasoning };
+    }
+  });
+  return normalized;
+}
+
 function ReportContent({ report }: { report: ReportResponse }) {
   const [activeTab, setActiveTab] = useState<TabId>("strategy");
   const [isPrinting, setIsPrinting] = useState(false);
   const data = report.report_json;
+  const normalizedRubric = normalizeRubric(data.scoring_rubric);
 
   useEffect(() => {
     // Keep beforeprint/afterprint for users who use Ctrl+P or the browser menu instead of the button
@@ -101,7 +124,7 @@ function ReportContent({ report }: { report: ReportResponse }) {
 
   const swot = data.swot ?? {
     strengths: [data.overview.one_line_pitch, `Primary: ${data.target_audience.primary_segment}`, data.target_audience.audience_insight],
-    weaknesses: data.failure_risks.map((r) => `${r.risk} (${r.severity})`),
+    weaknesses: data.failure_risks.map((r) => `${r.title || r.risk} (${r.severity})`),
     opportunities: data.opportunity_gaps.map((g) => g.gap),
     threats: data.competitors.map((c) => `${c.name} — ${c.threat_level} threat`),
   };
@@ -301,16 +324,20 @@ function ReportContent({ report }: { report: ReportResponse }) {
                             <p className="font-bold text-ink text-sm">{c.name}</p>
                             {c.website && <a href={c.website} target="_blank" rel="noopener noreferrer" className="text-[10px] text-moss hover:underline">Visit Site</a>}
                           </div>
-                          <p className="text-[10px] font-bold text-ink/40 uppercase">{c.category} &middot; {c.competitor_type}</p>
+                          <p className="text-[10px] font-bold text-ink/40 uppercase">{c.category ? `${c.category} · ` : ""}{c.competitor_type}</p>
                         </div>
                         <div className="flex flex-col items-end gap-1">
                           <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border ${c.threat_level === "High" ? "bg-rose-50 border-rose-200 text-rose-700" : c.threat_level === "Medium" ? "bg-amber-50 border-amber-200 text-amber-700" : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}>{c.threat_level} Threat</span>
                           {c.confidence_score && <span className="text-[9px] font-bold text-ink/50">Conf: {c.confidence_score}%</span>}
                         </div>
                       </div>
-                      <p className="text-xs leading-relaxed text-ink/70 italic bg-white/40 p-2 rounded-lg border border-ink/5 mt-1">"Why: {c.reason_for_inclusion || 'Market Rival'}"</p>
+                      {c.reason_for_inclusion && (
+                        <p className="text-xs leading-relaxed text-ink/70 italic bg-white/40 p-2 rounded-lg border border-ink/5 mt-1">"Why: {c.reason_for_inclusion}"</p>
+                      )}
                       <p className="text-xs leading-relaxed text-ink/80 mt-1">{c.description}</p>
-                      <p className="text-xs text-ink/80"><strong className="text-moss">Core Moat:</strong> {c.strength}</p>
+                      {c.strength && (
+                        <p className="text-xs text-ink/80"><strong className="text-moss">Core Moat:</strong> {c.strength}</p>
+                      )}
                       {c.evidence && <p className="text-[11px] text-ink/70 mt-2 bg-ink/5 p-2 rounded border-l-2 border-moss"><strong>Evidence:</strong> {c.evidence} {c.source_url && <a href={c.source_url} className="text-moss underline ml-1" target="_blank" rel="noopener noreferrer">[Source]</a>}</p>}
                     </div>
                     <div className="mt-4 flex gap-2 no-print border-t border-ink/5 pt-3">
@@ -349,21 +376,24 @@ function ReportContent({ report }: { report: ReportResponse }) {
             </div>
             <ReportSectionCard title="Failure Risk Analysis" forceOpen={isPrinting}>
               <div className="grid gap-4 sm:grid-cols-2">
-                {data.failure_risks.map((r) => (
-                  <div key={r.risk} className="rounded-2xl border border-rose-100 bg-rose-50/20 p-5 hover:bg-rose-50/50 transition-all space-y-2">
-                    <div className="flex justify-between items-start gap-2">
-                      <p className="font-bold text-ink text-sm">{r.risk}</p>
-                      <div className="flex flex-col items-end gap-1">
-                        <span className="text-[9px] font-bold uppercase tracking-wider bg-rose-100 text-rose-800 px-2 py-0.5 rounded">{r.severity} Severity</span>
-                        {r.confidence_score && <span className="text-[9px] font-bold text-rose-800/60">Conf: {r.confidence_score}%</span>}
+                {data.failure_risks.map((r) => {
+                  const riskTitle = r.title || r.risk || "";
+                  return (
+                    <div key={riskTitle} className="rounded-2xl border border-rose-100 bg-rose-50/20 p-5 hover:bg-rose-50/50 transition-all space-y-2">
+                      <div className="flex justify-between items-start gap-2">
+                        <p className="font-bold text-ink text-sm">{riskTitle}</p>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-[9px] font-bold uppercase tracking-wider bg-rose-100 text-rose-800 px-2 py-0.5 rounded">{r.severity} Severity</span>
+                          {r.confidence_score && <span className="text-[9px] font-bold text-rose-800/60">Conf: {r.confidence_score}%</span>}
+                        </div>
                       </div>
+                      <p className="text-xs leading-relaxed text-ink/75">{r.description}</p>
+                      {r.evidence && (
+                        <p className="text-[10px] text-rose-900/80 bg-rose-100/30 p-2 rounded border-l-2 border-rose-300 mt-2"><strong>Evidence:</strong> {r.evidence}</p>
+                      )}
                     </div>
-                    <p className="text-xs leading-relaxed text-ink/75">{r.description}</p>
-                    {r.evidence && (
-                      <p className="text-[10px] text-rose-900/80 bg-rose-100/30 p-2 rounded border-l-2 border-rose-300 mt-2"><strong>Evidence:</strong> {r.evidence}</p>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </ReportSectionCard>
             <div className="grid gap-6 sm:grid-cols-2">
@@ -448,23 +478,36 @@ function ReportContent({ report }: { report: ReportResponse }) {
               <ReportSectionCard title="Go-to-Market Strategy" forceOpen={isPrinting}>
                 <p className="text-sm text-ink/80 mb-5">{data.go_to_market.strategy_summary}</p>
                 <div className="space-y-4">
-                  {data.go_to_market.phases.map((phase, idx) => (
-                    <div key={idx} className="rounded-2xl border border-white bg-white/60 p-5 shadow-sm relative overflow-hidden">
-                      <div className="absolute left-0 top-0 h-full w-1 bg-moss opacity-60" style={{ opacity: 1 - idx * 0.2 }} />
-                      <div className="flex justify-between items-center mb-3 pl-2">
-                        <p className="font-extrabold text-ink text-sm">{phase.phase}</p>
-                        <span className="text-[10px] font-bold text-ink/50 bg-ink/5 px-2.5 py-1 rounded-full">{phase.duration}</span>
-                      </div>
-                      <p className="text-[10px] font-bold text-moss uppercase mb-2 pl-2">Channel: {phase.channel}</p>
-                      <ul className="pl-2 space-y-1.5">
-                        {phase.actions.map((action, ai) => (
-                          <li key={ai} className="text-xs text-ink/75 flex gap-2">
-                            <span className="text-moss font-bold">→</span>{action}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
+                  {data.go_to_market.phases.map((phase, idx) => {
+                    const isNewFormat = typeof phase === "string";
+                    if (isNewFormat) {
+                      return (
+                        <div key={idx} className="rounded-2xl border border-white bg-white/60 p-5 shadow-sm relative overflow-hidden">
+                          <div className="absolute left-0 top-0 h-full w-1 bg-moss opacity-60" style={{ opacity: 1 - idx * 0.2 }} />
+                          <p className="text-xs leading-relaxed text-ink/85 pl-2 whitespace-pre-line">{phase as string}</p>
+                        </div>
+                      );
+                    } else {
+                      const p = phase as any;
+                      return (
+                        <div key={idx} className="rounded-2xl border border-white bg-white/60 p-5 shadow-sm relative overflow-hidden">
+                          <div className="absolute left-0 top-0 h-full w-1 bg-moss opacity-60" style={{ opacity: 1 - idx * 0.2 }} />
+                          <div className="flex justify-between items-center mb-3 pl-2">
+                            <p className="font-extrabold text-ink text-sm">{p.phase}</p>
+                            <span className="text-[10px] font-bold text-ink/50 bg-ink/5 px-2.5 py-1 rounded-full">{p.duration}</span>
+                          </div>
+                          <p className="text-[10px] font-bold text-moss uppercase mb-2 pl-2">Channel: {p.channel}</p>
+                          <ul className="pl-2 space-y-1.5">
+                            {p.actions?.map((action: string, ai: number) => (
+                              <li key={ai} className="text-xs text-ink/75 flex gap-2">
+                                <span className="text-moss font-bold">→</span>{action}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      );
+                    }
+                  })}
                 </div>
               </ReportSectionCard>
             )}
@@ -537,18 +580,31 @@ function ReportContent({ report }: { report: ReportResponse }) {
               </div>
             )}
 
-            {data.scoring_rubric && (
+            {data.scoring_rubric && normalizedRubric && (
               <ReportSectionCard title="Venture Rating Breakdown" forceOpen={isPrinting}>
                 <div className="grid md:grid-cols-[1fr_1fr] gap-8 items-start">
                   <div className="space-y-4">
-                    {(Object.entries(data.scoring_rubric) as [string, any][])
-                      .filter(([key]) => key !== "overall_score")
-                      .map(([key, cat]) => (
-                        <ScoreBar key={key} label={key} score={cat.score} reasoning={cat.reasoning} />
-                      ))}
+                    {[
+                      "market_size",
+                      "competitive_advantage",
+                      "technical_feasibility",
+                      "monetization_potential",
+                      "founder_fit"
+                    ].map((key) => {
+                      const cat = normalizedRubric[key];
+                      if (!cat) return null;
+                      return (
+                        <ScoreBar
+                          key={key}
+                          label={key}
+                          score={cat.score}
+                          reasoning={cat.reasoning}
+                        />
+                      );
+                    })}
                   </div>
                   <div className="flex flex-col items-center gap-2">
-                    <RadarChart rubric={data.scoring_rubric} />
+                    <RadarChart rubric={normalizedRubric} />
                     <p className="text-[10px] font-bold text-ink/40 uppercase tracking-widest">Scoring Radar</p>
                   </div>
                 </div>
