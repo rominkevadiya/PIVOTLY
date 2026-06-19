@@ -9,7 +9,7 @@ from app.repositories.report_repository import ReportRepository
 from app.repositories.rate_limit_repository import RateLimitRepository
 from app.schemas.report import VentureReport
 from app.services.ai_service import AIService
-from app.services.search_service import search_competitors
+from app.services.search_service import search_venture_context
 
 
 class ReportService:
@@ -40,11 +40,9 @@ class ReportService:
                 raise RateLimitExceededError("Daily analysis limit reached")
 
         # Fetch live competitor context using Tavily Search API
-        search_context = await search_competitors(idea_text)
+        search_context = await search_venture_context(idea_text)
         
-        import asyncio
-        report = await asyncio.to_thread(
-            self.ai_service.generate_report,
+        report = await self.ai_service.generate_report(
             idea_text, 
             search_context, 
             region, 

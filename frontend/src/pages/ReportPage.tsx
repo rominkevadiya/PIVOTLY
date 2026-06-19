@@ -296,11 +296,22 @@ function ReportContent({ report }: { report: ReportResponse }) {
                   <div key={c.name} className="flex flex-col justify-between rounded-2xl border border-white bg-white/50 p-5 shadow-sm hover:shadow-md transition-all">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-3 border-b border-ink/5 pb-2">
-                        <p className="font-bold text-ink">{c.name}</p>
-                        <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border ${c.threat_level === "High" ? "bg-rose-50 border-rose-200 text-rose-700" : c.threat_level === "Medium" ? "bg-amber-50 border-amber-200 text-amber-700" : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}>{c.threat_level} Threat</span>
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <p className="font-bold text-ink text-sm">{c.name}</p>
+                            {c.website && <a href={c.website} target="_blank" rel="noopener noreferrer" className="text-[10px] text-moss hover:underline">Visit Site</a>}
+                          </div>
+                          <p className="text-[10px] font-bold text-ink/40 uppercase">{c.category} &middot; {c.competitor_type}</p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border ${c.threat_level === "High" ? "bg-rose-50 border-rose-200 text-rose-700" : c.threat_level === "Medium" ? "bg-amber-50 border-amber-200 text-amber-700" : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}>{c.threat_level} Threat</span>
+                          {c.confidence_score && <span className="text-[9px] font-bold text-ink/50">Conf: {c.confidence_score}%</span>}
+                        </div>
                       </div>
-                      <p className="text-xs leading-relaxed text-ink/70">{c.description}</p>
+                      <p className="text-xs leading-relaxed text-ink/70 italic bg-white/40 p-2 rounded-lg border border-ink/5 mt-1">"Why: {c.reason_for_inclusion || 'Market Rival'}"</p>
+                      <p className="text-xs leading-relaxed text-ink/80 mt-1">{c.description}</p>
                       <p className="text-xs text-ink/80"><strong className="text-moss">Core Moat:</strong> {c.strength}</p>
+                      {c.evidence && <p className="text-[11px] text-ink/70 mt-2 bg-ink/5 p-2 rounded border-l-2 border-moss"><strong>Evidence:</strong> {c.evidence} {c.source_url && <a href={c.source_url} className="text-moss underline ml-1" target="_blank" rel="noopener noreferrer">[Source]</a>}</p>}
                     </div>
                     <div className="mt-4 flex gap-2 no-print border-t border-ink/5 pt-3">
                       <a href={`https://www.google.com/search?q=${encodeURIComponent(c.name)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center rounded-xl bg-white border border-ink/10 px-3 py-1.5 text-[10px] font-bold text-ink hover:bg-ink hover:text-white transition">Web Search</a>
@@ -312,8 +323,20 @@ function ReportContent({ report }: { report: ReportResponse }) {
             </ReportSectionCard>
             <ReportSectionCard title="Market Rationale" forceOpen={isPrinting}>
               <div className="space-y-4">
-                <div><span className="text-[10px] font-bold text-ink/40 uppercase block">Addressable Potential</span><p className="font-bold text-moss mt-0.5">{data.market_potential.rationale}</p></div>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-[10px] font-bold text-ink/40 uppercase block">Addressable Potential</span>
+                    <p className="font-bold text-moss mt-0.5">{data.market_potential.rationale}</p>
+                  </div>
+                  {data.market_potential.confidence_score && <span className="text-[10px] font-bold bg-white px-2 py-1 rounded-lg border border-ink/10 shadow-sm text-ink/70">Conf: {data.market_potential.confidence_score}%</span>}
+                </div>
                 <p className="text-xs leading-relaxed text-ink/70">{data.market_potential.estimated_market_context}</p>
+                {data.market_potential.evidence && (
+                  <div className="text-[11px] text-ink/70 mt-2 bg-ink/5 p-3 rounded-lg border-l-2 border-moss">
+                    <strong className="block mb-1">Market Evidence:</strong> {data.market_potential.evidence}
+                    {data.market_potential.source_url && <a href={data.market_potential.source_url} className="text-moss underline ml-1" target="_blank" rel="noopener noreferrer">[Source]</a>}
+                  </div>
+                )}
               </div>
             </ReportSectionCard>
           </div>
@@ -330,9 +353,15 @@ function ReportContent({ report }: { report: ReportResponse }) {
                   <div key={r.risk} className="rounded-2xl border border-rose-100 bg-rose-50/20 p-5 hover:bg-rose-50/50 transition-all space-y-2">
                     <div className="flex justify-between items-start gap-2">
                       <p className="font-bold text-ink text-sm">{r.risk}</p>
-                      <span className="text-[9px] font-bold uppercase tracking-wider bg-rose-100 text-rose-800 px-2 py-0.5 rounded">{r.severity} Severity</span>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-[9px] font-bold uppercase tracking-wider bg-rose-100 text-rose-800 px-2 py-0.5 rounded">{r.severity} Severity</span>
+                        {r.confidence_score && <span className="text-[9px] font-bold text-rose-800/60">Conf: {r.confidence_score}%</span>}
+                      </div>
                     </div>
                     <p className="text-xs leading-relaxed text-ink/75">{r.description}</p>
+                    {r.evidence && (
+                      <p className="text-[10px] text-rose-900/80 bg-rose-100/30 p-2 rounded border-l-2 border-rose-300 mt-2"><strong>Evidence:</strong> {r.evidence}</p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -359,6 +388,33 @@ function ReportContent({ report }: { report: ReportResponse }) {
                 </div>
               </ReportSectionCard>
             </div>
+            
+            {data.contrarian_analysis && (
+              <ReportSectionCard title="Contrarian Analysis / Red Team" forceOpen={isPrinting}>
+                <div className="rounded-2xl border border-rose-200 bg-rose-50/20 p-5 shadow-sm space-y-5">
+                  <div>
+                    <h4 className="text-[11px] font-bold uppercase text-rose-700 tracking-wider mb-2">Why This Might Fail</h4>
+                    <ul className="space-y-1.5 pl-4 list-disc text-xs text-ink/80 marker:text-rose-400">
+                      {data.contrarian_analysis.recommendation_risks.map((risk, i) => <li key={i}>{risk}</li>)}
+                    </ul>
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-5 pt-3 border-t border-rose-100">
+                    <div>
+                      <h4 className="text-[11px] font-bold uppercase text-ink/60 tracking-wider mb-2">Counterarguments</h4>
+                      <ul className="space-y-1.5 pl-4 list-disc text-xs text-ink/70">
+                        {data.contrarian_analysis.counterarguments.map((arg, i) => <li key={i}>{arg}</li>)}
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="text-[11px] font-bold uppercase text-ink/60 tracking-wider mb-2">Alternative Interpretations</h4>
+                      <ul className="space-y-1.5 pl-4 list-disc text-xs text-ink/70">
+                        {data.contrarian_analysis.alternative_interpretations.map((alt, i) => <li key={i}>{alt}</li>)}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </ReportSectionCard>
+            )}
           </div>
 
           {/* Tab 4 — Action Plan (NEW) */}
@@ -434,6 +490,53 @@ function ReportContent({ report }: { report: ReportResponse }) {
               <span className="section-num">Section 05</span>
               <span className="section-title">Executive Summary</span>
             </div>
+            
+            {data.investor_verdict && (
+              <div className="rounded-3xl border border-ink/10 bg-gradient-to-br from-white to-ink/[0.02] p-6 shadow-panel">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5 border-b border-ink/5 pb-4">
+                  <div>
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-ink/40 mb-1">VC Memo Verdict</h3>
+                    <div className="flex items-center gap-3">
+                      <span className={`px-4 py-1.5 rounded-full text-sm font-black uppercase ${data.investor_verdict.would_invest ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}>
+                        {data.investor_verdict.would_invest ? "Would Invest" : "Pass"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-ink/40 block mb-1">Investment Confidence</span>
+                    <span className="text-2xl font-black text-ink">{data.investor_verdict.investment_confidence}<span className="text-sm text-ink/50">%</span></span>
+                  </div>
+                </div>
+                
+                <p className="text-sm font-medium leading-relaxed text-ink/80 mb-5 italic border-l-4 border-ink/10 pl-4 py-1">"{data.investor_verdict.investment_reasoning}"</p>
+                
+                {(data.investor_verdict.potential_strengths || data.investor_verdict.expected_concerns) && (
+                  <div className="grid sm:grid-cols-2 gap-6">
+                    {data.investor_verdict.potential_strengths && (
+                      <div className="space-y-2">
+                        <h4 className="text-[11px] font-bold uppercase tracking-wider text-moss">Potential Strengths</h4>
+                        <ul className="space-y-1.5">
+                          {data.investor_verdict.potential_strengths.map((s, i) => (
+                            <li key={i} className="text-xs text-ink/75 flex gap-2"><span className="text-moss">✓</span> {s}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {data.investor_verdict.expected_concerns && (
+                      <div className="space-y-2">
+                        <h4 className="text-[11px] font-bold uppercase tracking-wider text-rose-600">Expected Concerns</h4>
+                        <ul className="space-y-1.5">
+                          {data.investor_verdict.expected_concerns.map((c, i) => (
+                            <li key={i} className="text-xs text-ink/75 flex gap-2"><span className="text-rose-500">⚠</span> {c}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {data.scoring_rubric && (
               <ReportSectionCard title="Venture Rating Breakdown" forceOpen={isPrinting}>
                 <div className="grid md:grid-cols-[1fr_1fr] gap-8 items-start">

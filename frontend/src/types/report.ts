@@ -63,6 +63,7 @@ export interface VentureReport {
     primary_industry: string;
     sub_industry: string;
     industry_context: string;
+    confidence_score: number;
   };
   target_audience: {
     primary_segment: string;
@@ -71,9 +72,16 @@ export interface VentureReport {
   };
   competitors: Array<{
     name: string;
+    website?: string;
+    category: string;
+    competitor_type: "Direct" | "Indirect" | "Substitute";
     description: string;
     strength: string;
     threat_level: Rating;
+    reason_for_inclusion: string;
+    evidence: string;
+    source_url?: string;
+    confidence_score: number;
   }>;
   market_potential: {
     rating: Rating;
@@ -82,11 +90,16 @@ export interface VentureReport {
     tam?: string;
     sam?: string;
     som?: string;
+    evidence: string;
+    source_url?: string;
+    confidence_score: number;
   };
   failure_risks: Array<{
     risk: string;
     description: string;
     severity: Rating;
+    evidence: string;
+    confidence_score: number;
   }>;
   opportunity_gaps: Array<{
     gap: string;
@@ -99,7 +112,9 @@ export interface VentureReport {
   recommendation: {
     decision: RecommendationDecision;
     rationale: string;
+    evidence: string;
     confidence: Rating;
+    confidence_score: number;
   };
   scoring_rubric?: ScoringRubricSection;
   references?: Array<{
@@ -111,6 +126,18 @@ export interface VentureReport {
   go_to_market?: GoToMarketSection;
   next_steps?: NextStepItem[];
   unit_economics?: UnitEconomicsSection;
+  investor_verdict?: {
+    would_invest: boolean;
+    investment_confidence: number;
+    investment_reasoning: string;
+    expected_concerns: string[];
+    potential_strengths: string[];
+  };
+  contrarian_analysis?: {
+    counterarguments: string[];
+    alternative_interpretations: string[];
+    recommendation_risks: string[];
+  };
 }
 
 export interface AnalyzeResponse {

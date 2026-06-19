@@ -23,6 +23,7 @@ class IndustrySection(BaseModel):
     primary_industry: str = Field(..., min_length=1)
     sub_industry: str = Field(..., min_length=1)
     industry_context: str = Field(..., min_length=1)
+    confidence_score: int = Field(..., ge=1, le=100)
 
 
 class TargetAudienceSection(BaseModel):
@@ -31,15 +32,23 @@ class TargetAudienceSection(BaseModel):
     primary_segment: str = Field(..., min_length=1)
     secondary_segment: str = Field(..., min_length=1)
     audience_insight: str = Field(..., min_length=1)
+    confidence_score: int | None = Field(default=None, ge=1, le=100)
 
 
 class CompetitorItem(BaseModel):
     """Competitor entry."""
 
     name: str = Field(..., min_length=1)
+    website: str | None = Field(default=None, description="URL of the competitor website")
+    category: str = Field(..., min_length=1, description="e.g. SaaS, Marketplace, Hardware")
+    competitor_type: Literal["Direct", "Indirect", "Substitute"] = Field(..., description="Classification of competitive threat")
     description: str = Field(..., min_length=1)
     strength: str = Field(..., min_length=1)
     threat_level: Rating
+    reason_for_inclusion: str = Field(..., min_length=1, description="Rationale for why this competitor is relevant")
+    evidence: str = Field(..., min_length=1, description="Direct quote or fact from search verifying this competitor")
+    source_url: str | None = Field(default=None, description="URL source for the evidence")
+    confidence_score: int = Field(..., ge=1, le=100)
 
 
 class MarketPotentialSection(BaseModel):
@@ -51,6 +60,9 @@ class MarketPotentialSection(BaseModel):
     tam: str | None = Field(default=None, description="Total Addressable Market (TAM) estimate")
     sam: str | None = Field(default=None, description="Serviceable Addressable Market (SAM) estimate")
     som: str | None = Field(default=None, description="Serviceable Obtainable Market (SOM) estimate")
+    evidence: str = Field(..., description="A direct quote or data point proving the market size.")
+    source_url: str | None = Field(default=None, description="URL source for the evidence")
+    confidence_score: int = Field(..., ge=1, le=100)
 
 
 class FailureRiskItem(BaseModel):
@@ -59,6 +71,8 @@ class FailureRiskItem(BaseModel):
     risk: str = Field(..., min_length=1)
     description: str = Field(..., min_length=1)
     severity: Rating
+    evidence: str = Field(..., description="Historical precedent or data proving this risk.")
+    confidence_score: int = Field(..., ge=1, le=100)
 
 
 class OpportunityGapItem(BaseModel):
@@ -80,7 +94,9 @@ class RecommendationSection(BaseModel):
 
     decision: RecommendationDecision
     rationale: str = Field(..., min_length=1)
+    evidence: str = Field(..., description="Evidence supporting this recommendation.")
     confidence: Rating
+    confidence_score: int = Field(..., ge=1, le=100)
 
 
 class ScoreCategory(BaseModel):
@@ -106,6 +122,24 @@ class ReferenceItem(BaseModel):
 
     name: str = Field(..., min_length=1)
     url: str = Field(..., min_length=1)
+
+
+class ContrarianAnalysisSection(BaseModel):
+    """Contrarian analysis forcing Gemini to challenge its own conclusions."""
+
+    counterarguments: list[str] = Field(..., min_length=2)
+    alternative_interpretations: list[str] = Field(..., min_length=2)
+    recommendation_risks: list[str] = Field(..., min_length=2)
+
+
+class InvestorVerdictSection(BaseModel):
+    """Investor verdict and reasoning."""
+
+    would_invest: bool
+    investment_confidence: int = Field(..., ge=1, le=100)
+    investment_reasoning: str = Field(..., min_length=1)
+    expected_concerns: list[str] = Field(..., min_length=2, description="What an investor will grill you on")
+    potential_strengths: list[str] = Field(..., min_length=2, description="What an investor loves about this")
 
 
 # ── Enrichment sections ────────────────────────────────────────────────────────
@@ -178,6 +212,8 @@ class VentureReport(BaseModel):
     go_to_market: GoToMarketSection | None = None
     next_steps: list[NextStepItem] | None = Field(default=None, max_length=5)
     unit_economics: UnitEconomicsSection | None = None
+    contrarian_analysis: ContrarianAnalysisSection | None = None
+    investor_verdict: InvestorVerdictSection | None = None
 
 
 class ReportResponse(BaseModel):

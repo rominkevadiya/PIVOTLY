@@ -9,7 +9,7 @@ def build_analysis_prompt(
     region: str | None = None,
     budget_range: str | None = None,
 ) -> str:
-    """Build the strict JSON prompt used for Gemini analysis."""
+    """Build the prompt used for Gemini analysis."""
     analysis_date = datetime.now(timezone.utc).date().isoformat()
 
     search_section = ""
@@ -24,10 +24,7 @@ def build_analysis_prompt(
 
     return f"""
 You are an expert startup analyst and venture capital researcher.
-Evaluate the startup idea provided and return a structured JSON analysis.
-Be realistic, critical, and data-aware. Do not be overly optimistic.
-
-Return ONLY valid JSON. Do not include markdown, code fences, comments, or commentary outside the JSON.
+Evaluate the startup idea provided. Be realistic, critical, and data-aware. Do not be overly optimistic.
 
 {search_section}
 IDEA: {idea_text}
@@ -35,125 +32,23 @@ IDEA: {idea_text}
 {budget_context}
 DATE: {analysis_date}
 
-Perform this analysis:
-1. Identify the primary industry and sub-industry.
-2. Identify primary and secondary target audience segments.
-3. Identify 3 to 5 real or plausible competitors with name, description, strength, and threat level.
-4. Assess market potential as High, Medium, or Low with a concise rationale and realistic estimations for TAM, SAM, and SOM (e.g., '$10B', '$1.2B', '$80M').
-5. Identify 3 to 5 major failure risks with severity levels.
-6. Identify 2 to 3 opportunity gaps or underserved niches.
-7. Suggest exactly 3 specific improvements to strengthen the idea.
-8. Provide a final recommendation: Build, Pivot, Research Further, or Avoid.
-9. Provide a concise rationale and confidence level.
-10. Provide a scoring rubric rating 5 categories (market_size, competitive_advantage, technical_feasibility, monetization_potential, founder_fit) out of 10, plus an overall score out of 100. Assume the "founder" is a typical college student or first-time founder unless stated otherwise.
-11. Extract and cite 2 to 5 specific source websites or reference links from the LIVE WEB SEARCH RESULTS that are highly relevant to the competitors or market context.
-12. Generate an explicit SWOT analysis with 2-5 specific bullet points for each quadrant: Strengths (internal advantages & moats), Weaknesses (internal gaps & limitations), Opportunities (external market gaps to exploit), Threats (external risks & competitive forces). Do NOT reuse text from other sections verbatim.
-13. Design a phased Go-to-Market strategy with 2-4 phases. Each phase must include the phase name, duration (e.g. "Months 1-3"), a list of 2-4 specific actions, and the primary distribution channel.
-14. List exactly 5 concrete next steps ranked by priority (1=highest), each with a specific action, the rationale behind it, and a realistic timeframe (e.g. "Week 1-2", "Month 1").
-15. Estimate unit economics: Customer Acquisition Cost (CAC), Lifetime Value (LTV), LTV/CAC ratio, payback period, the revenue model type, and pricing notes.
+Perform this analysis and ensure you provide ALL of the following in the required structured output:
+1. Identify primary industry, sub-industry, and audience segments. Provide a strict 1-100 confidence_score for the industry section based on your knowledge certainty.
+2. Identify 3 to 5 real competitors. For each, provide the name, website, category, competitor_type (Direct, Indirect, Substitute), threat level, and reason_for_inclusion. You MUST provide an `evidence` quote or data point and its `source_url`. Include a 1-100 confidence_score per competitor.
+3. Assess market potential (TAM, SAM, SOM). You MUST provide explicit `evidence` and a `source_url` proving these numbers. Include a strict 1-100 confidence_score.
+4. Identify major failure risks. You MUST provide `evidence` for each risk (e.g., historical precedent, regulatory data) and a 1-100 confidence_score. Identify opportunity gaps.
+5. Provide specific improvement suggestions.
+6. Provide a final recommendation (Build, Pivot, Research Further, Avoid) with explicit `evidence` supporting the decision and a strict 1-100 confidence_score.
+7. Provide an overall scoring rubric (1-10 per category, overall out of 100).
+8. Cite 2 to 5 specific source websites from the search results.
+9. Provide an explicit SWOT analysis.
+10. Design a phased Go-to-Market strategy.
+11. List concrete next steps with priority and timeframe.
+12. Estimate unit economics (CAC, LTV, revenue model).
+13. INVESTOR VERDICT: Provide a boolean (`would_invest`), an `investment_confidence` (1-100), `investment_reasoning`, AND list 2+ `expected_concerns` and 2+ `potential_strengths`.
+14. CONTRARIAN ANALYSIS: Act as a pessimistic skeptic. Challenge your own conclusions by providing `counterarguments`, `alternative_interpretations`, and `recommendation_risks`.
 
-Return your analysis as a JSON object with this exact structure:
-{{
-  "overview": {{
-    "idea_summary": "string",
-    "one_line_pitch": "string"
-  }},
-  "industry": {{
-    "primary_industry": "string",
-    "sub_industry": "string",
-    "industry_context": "string"
-  }},
-  "target_audience": {{
-    "primary_segment": "string",
-    "secondary_segment": "string",
-    "audience_insight": "string"
-  }},
-  "competitors": [
-    {{
-      "name": "string",
-      "description": "string",
-      "strength": "string",
-      "threat_level": "High|Medium|Low"
-    }}
-  ],
-  "market_potential": {{
-    "rating": "High|Medium|Low",
-    "rationale": "string",
-    "estimated_market_context": "string",
-    "tam": "string",
-    "sam": "string",
-    "som": "string"
-  }},
-  "failure_risks": [
-    {{
-      "risk": "string",
-      "description": "string",
-      "severity": "High|Medium|Low"
-    }}
-  ],
-  "opportunity_gaps": [
-    {{
-      "gap": "string",
-      "description": "string"
-    }}
-  ],
-  "improvement_suggestions": [
-    {{
-      "suggestion": "string",
-      "rationale": "string"
-    }}
-  ],
-  "recommendation": {{
-    "decision": "Build|Pivot|Research Further|Avoid",
-    "rationale": "string",
-    "confidence": "High|Medium|Low"
-  }},
-  "scoring_rubric": {{
-    "market_size": {{ "score": 1, "reasoning": "string" }},
-    "competitive_advantage": {{ "score": 1, "reasoning": "string" }},
-    "technical_feasibility": {{ "score": 1, "reasoning": "string" }},
-    "monetization_potential": {{ "score": 1, "reasoning": "string" }},
-    "founder_fit": {{ "score": 1, "reasoning": "string" }},
-    "overall_score": 50
-  }},
-  "references": [
-    {{
-      "name": "string (name of the site/competitor, e.g. TechCrunch or competitor name)",
-      "url": "string (the exact URL from search results, e.g. https://...)"
-    }}
-  ],
-  "swot": {{
-    "strengths": ["string", "string"],
-    "weaknesses": ["string", "string"],
-    "opportunities": ["string", "string"],
-    "threats": ["string", "string"]
-  }},
-  "go_to_market": {{
-    "strategy_summary": "string",
-    "phases": [
-      {{
-        "phase": "string (e.g. Phase 1 – Validate)",
-        "duration": "string (e.g. Months 1-2)",
-        "actions": ["string", "string"],
-        "channel": "string (e.g. Direct outreach, LinkedIn)"
-      }}
-    ]
-  }},
-  "next_steps": [
-    {{
-      "priority": 1,
-      "action": "string",
-      "rationale": "string",
-      "timeframe": "string (e.g. Week 1-2)"
-    }}
-  ],
-  "unit_economics": {{
-    "estimated_cac": "string (e.g. $120) or null",
-    "estimated_ltv": "string (e.g. $960) or null",
-    "ltv_cac_ratio": "string (e.g. 8x) or null",
-    "payback_period": "string (e.g. 3 months) or null",
-    "revenue_model": "string (e.g. SaaS subscription, freemium upsell)",
-    "pricing_notes": "string"
-  }}
-}}
-""".strip()
+IMPORTANT RULES:
+- EVIDENCE: Whenever you make a claim about Market Size, Competitor Strength, or Risk, you MUST populate the `evidence` field with a direct data point or quote, preferably from the LIVE WEB SEARCH RESULTS. Do not hallucinate numbers.
+- CONFIDENCE SCORES: Calculate `confidence_score` (1-100) based strictly on evidence. If you have exact numbers from search results, score > 85. If you are guessing based on parametric memory, score < 50.
+"""
