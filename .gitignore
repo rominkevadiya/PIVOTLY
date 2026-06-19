@@ -5,7 +5,7 @@
 !.env.example
 
 # Deployment scripts
-deploy_script*.sh
+# deploy_script*.sh
 
 # Python
 __pycache__/
