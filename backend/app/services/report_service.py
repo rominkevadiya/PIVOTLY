@@ -39,6 +39,10 @@ class ReportService:
             if current_count >= 5:
                 raise RateLimitExceededError("Daily analysis limit reached")
 
+        # Release database connection back to the pool during long-running network operations
+        initial_db = self.repository.db
+        initial_db.close()
+
         # Fetch live competitor context using Tavily Search API
         search_context = await search_venture_context(idea_text)
         
@@ -49,19 +53,30 @@ class ReportService:
             budget_range
         )
         
-        persisted_report = self.repository.create(
-            idea_text=idea_text,
-            report_json=report.model_dump(mode="json"),
-            industry=report.industry.primary_industry,
-            market_potential=report.market_potential.rating,
-            recommendation=report.recommendation.decision,
-            user_id=user_id,
-        )
+        # Reacquire a new database connection for the final writes
+        from app.core.database import SessionLocal
+        new_db = SessionLocal(expire_on_commit=False)
+        self.repository.db = new_db
+        if self.rate_limit_repo:
+            self.rate_limit_repo.db = new_db
 
-        if user_id and self.rate_limit_repo:
-            self.rate_limit_repo.increment(user_id, "idea_submission", date.today())
+        try:
+            persisted_report = self.repository.create(
+                idea_text=idea_text,
+                report_json=report.model_dump(mode="json"),
+                industry=report.industry.primary_industry,
+                market_potential=report.market_potential.rating,
+                recommendation=report.recommendation.decision,
+                user_id=user_id,
+            )
 
-        return persisted_report
+            if user_id and self.rate_limit_repo:
+                self.rate_limit_repo.increment(user_id, "idea_submission", date.today())
+
+            new_db.expunge(persisted_report)
+            return persisted_report
+        finally:
+            new_db.close()
 
     def get_report(self, report_id: uuid.UUID) -> Report | None:
         """Retrieve a report by ID."""

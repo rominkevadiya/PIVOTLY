@@ -49,6 +49,7 @@ Perform this analysis and ensure you provide ALL of the following in the require
 14. CONTRARIAN ANALYSIS: Act as a pessimistic skeptic. Challenge your own conclusions by providing `counterarguments`, `alternative_interpretations`, and `recommendation_risks`.
 
 IMPORTANT RULES:
+- CONCISENESS: Be extremely concise. Keep all description, rationale, evidence, and reasoning fields short and to the point (maximum 1-2 sentences each). This is critical to fit the entire structured response within the token limit.
 - EVIDENCE: Whenever you make a claim about Market Size, Competitor Strength, or Risk, you MUST populate the `evidence` field with a direct data point or quote, preferably from the LIVE WEB SEARCH RESULTS. Do not hallucinate numbers.
 - CONFIDENCE SCORES: Calculate `confidence_score` (1-100) based strictly on evidence. If you have exact numbers from search results, score > 85. If you are guessing based on parametric memory, score < 50.
 """
