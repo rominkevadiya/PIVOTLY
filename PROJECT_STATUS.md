@@ -69,7 +69,7 @@ graph TD
 * **Cause:** The Gemini SDK would raise validation errors if the output JSON contained unexpected fields, had too many nested properties, or exceeded the token limit (causing truncation).
 * **Solution:**
   1. Monkey-patched the `google.genai` transformers to strip invalid fields (`additionalProperties`, `title`, `minimum`, `maximum`) that overload the schema parser.
-  2. Set `max_output_tokens=8192` in generation settings.
+  2. Set `max_output_tokens=32768` in generation settings.
   3. Implemented a robust `_parse_and_validate` handler with an auto-repair loop that truncates over-length lists (SWOT, competitors, and launch phases) to fit constraints before validation.
 * **Validation Results:** Schema validation errors dropped to 0% in tests; reports with slightly oversized AI lists are automatically repaired and saved successfully.
 
@@ -83,7 +83,7 @@ graph TD
 
 ### 2. Production Incident Investigation
 * **Findings:** Verified that Gunicorn and Nginx configurations were online, but Gunicorn was configured with `main:app` instead of `app.main:app` in the systemd script. Also found that `TAVILY_API_KEY` was missing from `prod.env`.
-* **Impact:** Highlighted deployment gaps and missing environment variables required for stable production.
+* **Impact:** Highlighted deployment gaps and missing environment variables required for stable production, which have now been fully resolved.
 
 ### 3. VentureReport Schema & Business Value Audit
 * **Findings:** Assessed every field in the `VentureReport` schema. Identified that the `references` section contributed to 20% of token usage and had a high validation failure risk due to URL generation hallucinations, while providing low user value.
@@ -96,9 +96,7 @@ graph TD
 > [!WARNING]
 > The following issues are currently unresolved and require attention:
 
-1. **Gemini Free-Tier Quota Limit (429 Errors):** The production `GEMINI_API_KEY` is a free tier key with a limit of 20 requests per day. Running consecutive analyses will trigger a `429 RESOURCE_EXHAUSTED` error once the limit is reached.
-2. **Tavily Key Missing in Prod:** `TAVILY_API_KEY` is missing from `prod.env`. The production server is currently relying entirely on DuckDuckGo search, which can easily fail or be blocked by Cloudflare on AWS EC2 instances.
-3. **Production Deployment Sync Pending:** The corrected deployment scripts (`deploy_script.sh` / `deploy_script_part2.sh`) have been updated in git, but the production server needs to pull the changes and rebuild the frontend to route API requests correctly to `/api/v1` instead of `localhost:8000`.
+1. **Gemini Free-Tier Quota Limit (429 Errors):** The production `GEMINI_API_KEY` is a free tier key with a limit of 20 requests per day. Running consecutive analyses will trigger a `429 RESOURCE_EXHAUSTED` error once the daily limit is reached. Backend key rotation is planned.
 
 ---
 
@@ -123,7 +121,7 @@ graph TD
 
 ## Performance Summary
 
-* **Average Report Generation Time:** 25–35 seconds (dependent on search query latency and Gemini token generation).
+* **Average Report Generation Time:** 20–30 seconds (dependent on search query latency and Gemini token generation).
 * **Search Execution Time:** 2–4 seconds (queries executed concurrently).
 * **Database Overhead:** < 150ms per request (due to immediate connection release).
 * **Token Consumption:** ~1,500 input tokens; ~2,000 output tokens per report.
@@ -134,8 +132,8 @@ graph TD
 
 * **AWS Deployment State:** Deployed on an AWS EC2 instance (`52.66.6.87`) with Nginx and Gunicorn.
 * **Backend Status (Verified):** Online and fully operational; database migrations have run successfully on RDS PostgreSQL.
-* **Frontend Status (Verified):** Online, but requires a redeploy to pick up the `VITE_API_BASE_URL` routing fix.
-* **Environment Config (Verified):** `.env` is loaded by systemd. Gemini API Key is loaded but currently exhausted.
+* **Frontend Status (Verified):** Online, rebuilt, and correctly routing API requests through Nginx proxy to `/api/v1`.
+* **Environment Config (Verified):** `.env` is loaded by systemd. Both `GEMINI_API_KEY` and `TAVILY_API_KEY` are configured and verified working.
 
 ---
 

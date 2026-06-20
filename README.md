@@ -29,10 +29,10 @@ Unlike a generic AI wrapper, the platform uses a purpose-built prompt, strict JS
 
 ### Planned Future Features
 
-- Competitor intelligence with external data sources
-- Market intelligence modules
-- MCP integrations
-- PDF export and sharing workflows
+- Advanced market intelligence dashboard modules
+- Model Context Protocol (MCP) server integrations
+- Public report sharing workflows and team collaboration space
+- Multi-language translation support for generated reports
 
 ## Documentation
 
@@ -240,11 +240,11 @@ http://localhost:5173
 - Usage statistics
 - Database-backed rate limiting
 
-### Phase 4: Data Augmentation & Integrations
-- MCP integrations
-- Competitor intelligence via external APIs (e.g., SerpAPI)
-- Market intelligence modules
-- Idea scoring rubric and PDF exports
+### Phase 4: Data Augmentation & Integrations (Partially Completed)
+- Tavily Search API with DuckDuckGo fallback for competitor research (Completed)
+- Idea scoring rubric and dynamic SVG charts (Completed)
+- Professional A4 PDF export (Completed)
+- MCP integrations & advanced competitor intelligence modules (Planned)
 
 ### Phase 5: Deployment (Completed)
 - AWS deployment (EC2)

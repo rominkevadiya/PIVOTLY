@@ -354,7 +354,7 @@ Large Language Models (LLMs) are frozen in time; they do not know what happened 
 * **Structured Outputs:** Modern LLM APIs (like Gemini's Structured Outputs) allow developers to supply a JSON schema. The model's token-generation weights are constrained so it can only generate syntactically valid JSON matching that exact schema.
 
 ### Real-World Issues Audited in Pivotly
-1. **Response Truncation (`MAX_TOKENS`):** Generating detailed reports requires high output tokens. If the limit is set too low (e.g., 2,000 tokens), the JSON stream will cut off mid-response, yielding invalid JSON. In Pivotly, we configured `max_output_tokens=8192` to provide ample headroom.
+1. **Response Truncation (`MAX_TOKENS`):** Generating detailed reports requires high output tokens. If the limit is set too low (e.g., 2,000 tokens), the JSON stream will cut off mid-response, yielding invalid JSON. In Pivotly, we configured `max_output_tokens=32768` to provide ample headroom.
 2. **Schema Over-complexity:** Large nested schemas with dozens of strict limits (e.g., `min_items: 3`, `max_items: 10` on arrays) increase the probability that the LLM fails internal constraints, resulting in generation failures. Simplifying the schema improves performance and dramatically lowers token consumption costs.
 
 ---

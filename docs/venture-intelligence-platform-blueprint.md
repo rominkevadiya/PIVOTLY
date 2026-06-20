@@ -84,17 +84,20 @@ The Venture Intelligence Platform solves this by giving any founder or student a
 **AI Analysis Pipeline**
 - Industry classification
 - Target audience identification
-- Competitor analysis (AI-reasoned, no live web scraping in V1)
+- Competitor analysis grounded in real-time web search (using Tavily API and DuckDuckGo scraper fallback)
 - Market potential assessment (High / Medium / Low)
 - Failure risk analysis with risk categories and severity levels
 - Opportunity gap discovery
+- Quantitative idea scoring rubric (numerical scores per category and overall)
 - Improvement suggestions
 - Final recommendation with rationale
 
 **Results Dashboard**
 - Displays the completed analysis report in a clean, readable layout
+- Dynamic SVG Radar charts visualizing the scoring rubric metrics
 - Sections are collapsible for readability
 - Report includes a visual recommendation badge (Build / Pivot / Research Further / Avoid)
+- **A4-Optimized PDF Export**: High-quality PDF export preserving dashboard design, layout, and colors.
 
 **Analysis History**
 - Logged-in users can view all past analyses
@@ -102,17 +105,15 @@ The Venture Intelligence Platform solves this by giving any founder or student a
 - Clicking an entry opens the full report
 
 **Basic Rate Limiting**
-- Limit free users to 5 analyses per 24 hours
-- Prevents Gemini API cost abuse
+- Limit free users to 5 analyses per 24 hours via DB-backed upsert rate limits
+- Global IP-based rate limiting via slowapi (60 requests/minute)
 
 ---
 
 ## Features Excluded from V1
 
 - Social sharing of reports
-- PDF export of reports
 - Comparison of two ideas side by side
-- Real-time web scraping for live competitor data
 - User subscription / payment system
 - Team collaboration features
 - Email verification flow
@@ -128,18 +129,17 @@ The Venture Intelligence Platform solves this by giving any founder or student a
 V1 is complete when:
 1. A user can register, log in, and log out
 2. A user can submit a startup idea and receive a structured analysis report
-3. The report covers all 9 sections (Overview through Recommendation)
+3. The report covers all 9 sections (Overview through Recommendation) plus SVG charts and PDF export
 4. A user can view their analysis history
 5. The system enforces rate limits
-6. The application runs reliably in a local development environment
+6. The application runs reliably in the production environment
 
 ---
 
 ## Future Expansion Possibilities (Post-V1)
 
-- **V2:** Live competitor scraping using web search APIs (e.g., SerpAPI)
-- **V2:** PDF report export
-- **V2:** Idea scoring rubric with numerical scores per category
+- **V2:** Caching layer for web search results (Redis/Memcached)
+- **V2:** Backend API key rotation to bypass Gemini free-tier rate limits
 - **V3:** Side-by-side idea comparison
 - **V3:** Saved competitor watchlists
 - **V4:** Investor match suggestions based on idea category
@@ -789,17 +789,17 @@ User Submits Idea
 │  Step 4: Gemini API Call    │
 │  - Model: gemini-2.5-flash  │
 │  - Temperature: 0.4         │
-│  - Max tokens: 4000         │
-│  - Response format: JSON    │
+│  - Max tokens: 32768        │
+│  - response_schema=schema   │
 └─────────────┬───────────────┘
               │
               ▼
 ┌─────────────────────────────┐
-│  Step 5: Response Parsing   │
-│  - Extract JSON from text   │
-│  - Validate against schema  │
-│  - Handle parsing errors    │
-│  - Retry once on failure    │
+│  Step 5: Parse & Validate   │
+│  - Native Pydantic checking │
+│  - Auto-Repair sanitize loop│
+│  - Tenacity retry handler   │
+│  - Error dumps to /tmp      │
 └─────────────┬───────────────┘
               │
               ▼
@@ -939,23 +939,21 @@ Return your analysis as a JSON object with this exact structure:
 ---
 
 ### Step 4: Gemini API Call
-- Model: `gemini-2.5-flash` (cost-efficient, fast, strong reasoning)
-- Temperature: `0.4` (low enough for structured, consistent output; not so low it becomes formulaic)
-- Max output tokens: `4000` (sufficient for a full report)
-- The prompt instructs JSON-only output, reducing post-processing complexity
+- Model: `gemini-2.5-flash` (cost-efficient, fast, strong reasoning, runs with custom SDK monkey-patch to strip unsupported OpenAPI schema fields)
+- Temperature: `0.4` (low enough for structured, consistent output)
+- Max output tokens: `32768` (high budget to prevent reasoning/thinking token limits from truncating the final JSON)
+- Schema Enforcement: Native structured outputs (`response_schema=VentureReport` passed to SDK)
 
 ---
 
-### Step 5: Response Parsing
-Gemini's response text is parsed with a try/except:
+### Step 5: Response Parsing & Validation
+Gemini's native JSON output is parsed and validated using:
 ```
-1. Attempt to parse the raw response as JSON directly
-2. If that fails, strip markdown code fences (```json ... ```) and retry
-3. If still invalid, log the raw response and mark idea status as 'failed'
-4. Return a structured error to the caller
+1. Validate against the VentureReport Pydantic schema using model_validate_json()
+2. On ValidationError, trigger the backend Auto-Repair Engine to sanitize and prune over-limit list fields (e.g., SWOT, launch steps, competitors)
+3. If auto-repair fails, raise an AIServiceError, generate a TraceID, and dump raw response/errors under /tmp/pivotly_errors/ for diagnostic debugging
+4. Utilize a tenacity retry wrapper to automatically retry transient API errors (3 attempts, exponential backoff)
 ```
-
-Parsed JSON is then validated against the expected schema (checking for required keys). Missing or malformed sections are flagged and either filled with defaults or trigger a failure response.
 
 ---
 
