@@ -19,25 +19,65 @@ __pycache__/
 htmlcov/
 venv/
 .venv/
+env/
+.env/
 pip-wheel-metadata/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
 # Node / frontend build output
 node_modules/
 dist/
 .vite/
 *.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
 
-# Local databases and logs
+# Local databases, logs, and SQL sessions
 *.db
 *.sqlite
 *.sqlite3
 *.log
+*.session.sql
 
 # Editor / OS files
 .DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
 .idea/
 .vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*~
 
-# Local postgres data
+# External tools / Local postgres data
 postgres_data/
+.code-review-graph/
 
+# Scratch & Ad-hoc test scripts (excluding standard tracked test files)
+test_gemini_key.py
+test_remote_flow.py
+test_remote_flow2.py
+test_structured_generation.py
