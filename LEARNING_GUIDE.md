@@ -100,62 +100,22 @@ REST (Representational State Transfer) is an architectural style for APIs that u
 * **PUT/PATCH:** Update existing data on the server.
 * **DELETE:** Remove data from the server.
 
-### Pivotly API Specification
+### Pivotly API Design
 
-#### 1. User Registration (`POST /auth/register`)
-* **Request Body:**
-  ```json
-  {
-    "email": "user@example.com",
-    "password": "securepassword123"
-  }
-  ```
-* **Response (201 Created):**
-  ```json
-  {
-    "id": "c3b88b22-8bfb-4835-9004-98448b17a123",
-    "email": "user@example.com"
-  }
-  ```
+In Pivotly, we map our actions to standard REST endpoints. Here are the core endpoints used in our application:
 
-#### 2. User Login & Token Generation (`POST /auth/login`)
-* **Request Body (form-data):**
-  ```
-  username=user@example.com&password=securepassword123
-  ```
-* **Response (200 OK):**
-  ```json
-  {
-    "access_token": "eyJhbGciOiJIUzI1NiIsIn...",
-    "token_type": "bearer"
-  }
-  ```
+* **Authentication:**
+  * `POST /auth/register` — Creates a new user account.
+  * `POST /auth/login` — Verifies credentials and returns a signed JWT access token.
+  * `GET /auth/me` — Fetches current logged-in user profile.
+* **Analysis & Reports:**
+  * `POST /api/v1/analyze` — Initiates the venture research and LLM report generation pipeline.
+  * `GET /api/v1/reports` — Retrieves a paginated list of previous venture reports for the current user.
+  * `GET /api/v1/reports/{report_id}` — Retrieves the full detailed JSON analysis report for a specific ID.
 
-#### 3. Current User Profile (`GET /auth/me`)
-* **Authorization Header:** `Bearer <token>`
-* **Response (200 OK):**
-  ```json
-  {
-    "id": "c3b88b22-8bfb-4835-9004-98448b17a123",
-    "email": "user@example.com"
-  }
-  ```
+> [!NOTE]
+> For the complete API request/response JSON schemas, header details, and status codes, refer directly to the [Pivotly API Documentation](docs/API.md).
 
-#### 4. Analyze Idea (`POST /api/v1/analyze`)
-* **Request Body:**
-  ```json
-  {
-    "idea_text": "AI-powered automated inventory management for micro-retailers",
-    "region": "Global",
-    "budget_range": "$1,000 - $5,000"
-  }
-  ```
-* **Response (201 Created):**
-  ```json
-  {
-    "report_id": "f5d72f91-2a1d-4eb4-b9fa-76d54238e8cb"
-  }
-  ```
 
 ---
 
@@ -221,37 +181,16 @@ Header.Payload.Signature
 A Relational Database Management System (RDBMS) stores data in structured tables linked by relationships.
 
 ### Pivotly Schema Structure
-Pivotly uses PostgreSQL. Here is the relational schema:
 
-```
-┌──────────────────────────────────────┐
-│                users                 │
-├──────────────────────────────────────┤
-│ id (PK)         UUID                 │
-│ email           VARCHAR (Unique)     │
-│ hashed_password VARCHAR              │
-│ is_active       BOOLEAN              │
-└──────────────────┬───────────────────┘
-                   │
-                   │ 1-to-Many
-                   ▼
-┌──────────────────────────────────────┐
-│               reports                │
-├──────────────────────────────────────┤
-│ id (PK)         UUID                 │
-│ idea_text       TEXT                 │
-│ report_json     JSONB                │
-│ industry        VARCHAR              │
-│ market_potential VARCHAR             │
-│ recommendation  VARCHAR              │
-│ user_id (FK)    UUID                 │
-│ created_at      TIMESTAMP            │
-└──────────────────────────────────────┘
-```
+Pivotly's schema consists of key tables (`users`, `ideas`, `reports`, `rate_limits`) that handle registration, rate-limiting, and report storage.
 
-* **Primary Key (PK):** A unique identifier for each row (e.g., `id` UUID).
-* **Foreign Key (FK):** Creates a link between tables. `reports.user_id` references `users.id`.
-* **JSONB DataType:** PostgreSQL supports storing JSON in a binary format. This allows Pivotly to store complex AI-generated schema properties without needing to map dozens of nested properties to individual database columns.
+* **Primary Key (PK):** A unique identifier for each row (e.g., using UUIDs to prevent predictable sequential resource browsing).
+* **Foreign Key (FK):** Creates a relationship between tables, linking reports and ideas to their owning user.
+* **JSONB DataType:** PostgreSQL supports storing JSON in a parsed binary format. This allows Pivotly to persist complex nested AI reports without forcing expensive migrations whenever the LLM output schema changes.
+
+> [!NOTE]
+> For the complete entity-relationship diagram, field specifications, indices, and database configuration, refer directly to the [Pivotly Database Documentation](docs/DATABASE.md).
+
 
 ---
 
