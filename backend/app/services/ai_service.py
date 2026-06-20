@@ -159,7 +159,7 @@ class AIService:
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.4,
-                max_output_tokens=8192,
+                max_output_tokens=32768,
                 response_mime_type="application/json",
                 response_schema=VentureReport,
             ),
