@@ -49,14 +49,14 @@ Group=www-data
 WorkingDirectory=/home/ubuntu/pivotly/backend
 Environment=\"PATH=/home/ubuntu/pivotly/backend/venv/bin\"
 EnvironmentFile=/home/ubuntu/pivotly/backend/.env
-ExecStart=/home/ubuntu/pivotly/backend/venv/bin/gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker -b 127.0.0.1:8000
+ExecStart=/home/ubuntu/pivotly/backend/venv/bin/gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 127.0.0.1:8000
 
 [Install]
 WantedBy=multi-user.target
 SYSTEMD_EOF"
 
 sudo systemctl daemon-reload
-sudo systemctl start pivotly
+sudo systemctl restart pivotly
 sudo systemctl enable pivotly
 
 echo "Deployment complete!"
