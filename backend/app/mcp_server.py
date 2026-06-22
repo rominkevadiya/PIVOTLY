@@ -8,7 +8,7 @@ from mcp.server.sse import SseServerTransport
 
 from app.core.database import SessionLocal
 from app.models.report import Report
-from app.schemas.report import VentureReport
+from app.schemas.report import VentureReportV2
 
 mcp_server = FastMCP("Pivotly MCP Server")
 
@@ -100,7 +100,7 @@ def validate_report(report_data_json: str) -> str:
     """
     try:
         data = json.loads(report_data_json)
-        VentureReport.model_validate(data)
+        VentureReportV2.model_validate(data)
         return "Success: The report JSON is valid according to the VentureReport schema."
     except json.JSONDecodeError as e:
         return f"Validation Failed: Invalid JSON syntax. Error: {str(e)}"
