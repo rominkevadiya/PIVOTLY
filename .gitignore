@@ -81,3 +81,10 @@ test_gemini_key.py
 test_remote_flow.py
 test_remote_flow2.py
 test_structured_generation.py
+test_api.py
+test_lifecycle.py
+test_v2_agents.py
+benchmark_defer.py
+
+# System & AI tools
+.junie/
