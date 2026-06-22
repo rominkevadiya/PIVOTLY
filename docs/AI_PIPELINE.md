@@ -2,106 +2,163 @@
 
 ## AI Pipeline Overview
 
-The Pivotly application features a production-grade, single-pass Artificial Intelligence pipeline designed to evaluate raw startup ideas and output highly structured, multi-dimensional venture reports. It relies on a "RAG-lite" (Retrieval-Augmented Generation) approach using live web search to ground the AI's knowledge, native API structured outputs, and automatic validation/repair hooks to guarantee reliability and format consistency.
+The Pivotly application features a production-grade, Directed Acyclic Graph (DAG) Artificial Intelligence pipeline designed to evaluate raw startup ideas and output highly structured, multi-dimensional venture reports. It relies on a "RAG-lite" (Retrieval-Augmented Generation) approach using live web search to ground the AI's knowledge, native API structured outputs, and automatic validation/repair hooks to guarantee reliability and format consistency.
 
-## End-to-End Flow
+## Flow Diagram
 
-```text
-+-------------------+       +-------------------------------+
-|  User Submission  |       |       SearchService           |
-| (Idea, Region,    |------>| (Tavily with DDGS Fallback)   |
-|  Budget)          |       | Fetches live market context   |
-+-------------------+       +---------------+---------------+
-                                            |
-+-------------------------------------------v-----------------------------------+
-|                                 Prompt Builder                                |
-| Injects: User Idea + Search Context + Formatting Instructions                 |
-+-------------------------------------------+-----------------------------------+
-|                                           |
-|                                           v
-+-------------------------------------------------------------------------------+
-|                                  AIService                                    |
-| - Unified google-genai async SDK (model: gemini-2.5-flash)                    |
-| - Tenacity Retry Wrapper (3 attempts, exponential backoff: 2s to 10s)         |
-| - Configuration: temp=0.4, max_output_tokens=32768                            |
-| - Strict Native Constraint: response_schema=VentureReport                     |
-+-------------------------------------------+-----------------------------------+
-                                            |
-+-------------------------------------------v-----------------------------------+
-|                            Pydantic Validation Layer                          |
-| - Natively validates API JSON against VentureReport Pydantic schema           |
-+-------------------------------------------+-----------------------------------+
-                                            |
-                  +-------------------------+-------------------------+
-                  | (Success)                                         | (Validation Error)
-                  v                                                   v
-+-----------------------------------+               +-----------------------------------+
-|        Postgres Persistence       |               |        Auto-Repair Engine         |
-| Saves report payload to JSONB.    |               | Coerces array lengths/attributes  |
-+-----------------------------------+               | to fit schema constraints.        |
-                                                    +-----------------+-----------------+
-                                                                      |
-                                                            +---------+---------+
-                                                            | (Success)         | (Failure)
-                                                            v                   v
-                                                    +---------------+   +---------------+
-                                                    | Save Report   |   | Trace ID Log  |
-                                                    | to Database   |   | Dump to /tmp  |
-                                                    +---------------+   +---------------+
+```mermaid
+graph TD
+    A[User Idea + Web Search Context] --> B(Research Agent)
+    
+    B --> C(Competitor Agent)
+    B --> D(Contrarian Agent)
+    
+    C --> E(Moat Agent)
+    
+    C --> G(Backend Scoring Engine)
+    D --> G
+    E --> G
+    B --> G
+    
+    G --> H(Action Agent)
 ```
 
 ## Input Processing
 
 When a user submits an analysis request, the backend receives the `idea_text`, `region`, and `budget_range`.
-Before the AI is invoked, the `ReportService` calls the `SearchService` (`search_competitors`). The system executes search queries concurrently:
-1. **Primary**: Queries the **Tavily Search API** (specifically designed for AI agents) to get live, relevant competitor and market context.
-2. **Fallback**: If the Tavily API fails or has no key configured, the system automatically falls back to DuckDuckGo Search (`ddgs`) using an asynchronous executor thread (`asyncio.to_thread`) to ensure high availability.
+Before the AI is invoked, the `ReportService` calls the `SearchService` (`search_competitors`). The system executes search queries:
+1. **Primary**: Queries the **Tavily Search API** to get live, relevant competitor and market context.
+2. **Fallback**: Falls back to DuckDuckGo Search (`ddgs`).
 
-The gathered results (titles, URLs, and snippets) are compiled into a markdown-formatted context string. This serves as the "live web grounding" for the LLM, reducing hallucinated competitor analysis.
+The gathered results (titles, URLs, and snippets) are compiled into a markdown-formatted context string (`search_context`). This serves as the "live web grounding" for the LLM, reducing hallucinated competitor analysis.
 
-## Prompt Engineering Strategy
+---
 
-The prompt is constructed centrally in `app/utils/prompt_builder.py`. The strategy involves:
+## Agent Personas & Schemas
 
-1. **Persona Assignment:** "You are an expert startup analyst and venture capital researcher."
-2. **Instruction Framing:** Explicitly telling the model to "Be realistic, critical, and data-aware. Do not be overly optimistic."
-3. **Context Injection:** The live web search results, target region, and budget are injected as explicit context blocks. The current UTC date is also injected so the LLM has temporal awareness.
-4. **Task Breakdown:** A numbered list of explicit analytical tasks covering core viability, SWOT, go-to-market strategy, unit economics, action plans, and extracting search reference links.
-5. **Strict Schema Definition:** The prompt aligns with the fields and enums (e.g., `"threat_level": "High|Medium|Low"`) required by the system, ensuring semantic alignment with the Pydantic schema.
+### Reusable Primitive: `Evidence`
+Every major qualitative claim generated by an agent MUST be supported by an `Evidence` object.
+```python
+class Evidence(BaseModel):
+    claim: str = Field(description="The factual claim being made")
+    source_url: str | None = Field(description="URL to the source backing this claim")
+    quote: str | None = Field(description="Direct quote or specific data point from the source")
+    confidence: str = Field(description="High, Medium, or Low")
+```
 
-## Gemini Integration
+### 1. Research Agent
+**Persona:** Objective Market Data Researcher
+**Input:** Idea Text, Raw Tavily Search Results
+**Goal:** Extract pure factual data. Do not generate opinions.
+```python
+class ResearchContext(BaseModel):
+    market_size_estimate: str
+    growth_rate_estimate: str
+    target_audience: list[str]
+    identified_competitors: list[str]
+    regulatory_concerns: list[str]
+    evidence_list: list[Evidence]
+```
 
-The AI interaction is handled by the `AIService` class using the official `google-genai` Python SDK.
-* **Model:** Configured via the `GEMINI_MODEL` environment variable. The code default in `config.py` is `gemini-1.5-flash`; the production environment sets it to `gemini-2.5-flash`.
-* **Parameters:** 
-  * `temperature=0.4`: Set low to favor analytical consistency and adherence to instructions over creative variation.
-  * `max_output_tokens=32768`: Configured high to provide sufficient token budget for both the model's internal thinking/reasoning steps and the final detailed JSON payload.
-  * `response_mime_type="application/json"`: Informs the model to generate a valid JSON string.
-  * `response_schema=VentureReport`: Leverages Gemini's Native Structured Outputs. The Pydantic model is supplied directly to the API, forcing structural compliance at the token-generation level.
-* **Monkey-Patching google-genai SDK**: To circumvent an issue in the SDK's schema transformer that crashed with `KeyError: 'type'` when processing nullable references and nested objects, custom wrappers for `handle_null_fields` and `process_schema` are applied at application startup to strip forbidden OpenAPI attributes and resolve `$ref` pointers.
-* **Resiliency Wrapper**: The API calls are wrapped with a `tenacity` retry decorator, configured for **3 attempts** with **exponential backoff** (starting at 2s, capped at 10s) for transient network or API errors.
+### 2. Competitor Agent
+**Persona:** Cutthroat Competitive Intelligence Analyst
+**Input:** Idea Text, `search_context`, `ResearchContext`
+**Goal:** Determine how competitors will destroy the startup. Explicitly cite sources from the `search_context`.
+```python
+class Competitor(BaseModel):
+    name: str
+    website: str | None
+    threat_level: str
+    copy_risk: str
+    strengths: list[str]
+    weaknesses: list[str]
 
-## Response Handling
+class CompetitorAnalysis(BaseModel):
+    competitors: list[Competitor]
+    market_concentration: str
+    evidence_list: list[Evidence]
+```
 
-1. **Schema Validation**: The API response is parsed and validated using `VentureReport.model_validate_json()`.
-2. **Auto-Repair Engine**: If validation fails due to minor schema discrepancies (e.g., Gemini returns list lengths outside the strictly defined Pydantic bounds), the backend catches the `ValidationError` and triggers a fallback sanitization loop. This loop:
-   * Coerces array lengths (e.g., truncating lists of competitors, failure risks, next steps, and SWOT categories to their bounds or padding them with formatted placeholders).
-   * Verifies nested object schemas like `investor_verdict` and `go_to_market`.
-   * Re-evaluates the repaired object via `VentureReport.model_validate()`.
-3. **Trace-ID Diagnostic Logging**: If validation fails completely after auto-repair, the backend generates a unique UUID `TraceID`. It logs the exception, dumps the raw AI response and prompt to `/tmp/pivotly_errors/` for debugging, and returns an `AIServiceError` with the TraceID.
+### 3. Contrarian Agent
+**Persona:** Skeptical Sequoia Capital Partner
+**Input:** Idea Text, `search_context`, `ResearchContext`
+**Goal:** Find reasons to say "No" to the investment.
+```python
+class ContrarianAnalysis(BaseModel):
+    top_failure_reasons: list[str]
+    critical_assumptions: list[str]
+    largest_unknowns: list[str]
+    execution_risks: list[str]
+```
 
-## Report Persistence
+### 4. Moat Agent
+**Persona:** Strategic Defensibility Expert
+**Input:** Idea Text, `search_context`, `CompetitorAnalysis`
+**Goal:** Identify any defensible moats.
+```python
+class MoatAnalysis(BaseModel):
+    moat_type: str
+    defensibility_explanation: str
+    copy_difficulty: str
+    network_effects_present: bool
+    data_advantage_present: bool
+    evidence_list: list[Evidence]
+```
 
-If validation succeeds (initially or after auto-repair), the structured JSON is serialized (`report.model_dump(mode="json")`) and saved in a PostgreSQL `JSONB` column inside the `reports` table. Key attributes (like primary industry, rating, and recommendation) are extracted and stored in indexed relational columns to speed up dashboard listings.
+### 5. Action Agent
+**Persona:** Serial Startup Founder / Execution Expert
+**Input:** Idea Text, `Scoring`, All previous JSONs
+**Goal:** Produce a GTM Strategy and actionable next steps.
+*(Outputs `ActionPlan`)*
 
-## Cost & Rate Optimization
+---
 
-1. **Model Choice**: Utilizing `gemini-2.5-flash` keeps generation costs low while maintaining high analytical reasoning capabilities.
-2. **Two-Tier Rate Limiting**:
-   * **IP-level (Tier 1)**: Configured slowapi to restrict global clients to 60 requests per minute.
-   * **User-level (Tier 2)**: DB-backed tracking that limits users to 5 analysis runs per day via database atomic upserts.
+## Token Optimization & Hallucination Strategy
+By passing the `search_context` redundantly downstream, we consume approximately 9,500 input tokens. However, this is considered a highly worthwhile tradeoff because it strictly limits the agents to exclusively citing `source_url` from provided data, permanently eliminating URL hallucination.
 
-## Current Limitations & Future Upgrades
+---
 
-1. **Long-Lived HTTP Lifecycle**: The entire pipeline (Search -> LLM -> Parse -> DB) executes during a single HTTP request lifecycle. The client connection stays open for 20-30 seconds. A future improvement should migrate this to an asynchronous background task queue (e.g., Celery + Redis) and use WebSockets or polling for frontend updates.
-2. **Database-Backed Rate Limiting**: Enforcing rate limits via database transactions scales poorly under heavy concurrent traffic. Migrating rate limiting to an in-memory database like Redis is recommended.
+## Deterministic Scoring Engine
+
+In V1, Pivotly relied on the LLM to generate scores. In V2, a backend Python service (`scoring_service.py`) applies a deterministic algorithm to generate the final scorecard based on the LLM classifications.
+
+### Category Scoring Logic (0-10)
+
+#### A. Market Score
+- **Base Score (5/10)**
+- **Market Size Modifiers:** `> $1B TAM`: +2, `$100M - $1B TAM`: +1, `< $100M TAM`: -1
+- **Growth Modifiers:** `High Growth`: +2, `Moderate Growth`: +1, `Stagnant/Declining`: -2
+- **Evidence Penalty:** Empty `evidence_list`: -3
+
+#### B. Competition Score
+- **Base Score (10/10)** (Lower is worse for the startup)
+- **Competitor Count Modifiers:** `0-1`: 0, `2-4`: -2, `5+`: -4
+- **Concentration Modifiers:** `Monopoly`: -3, `Consolidated`: -2, `Fragmented`: +1
+- **Threat Level Modifiers:** Subtract 1 for every competitor marked with `High` threat.
+
+#### C. Moat Score
+- **Base Score (0/10)**
+- **Moat Type:** `Network Effects`: +4, `Data Advantage`: +3, `High Switching Costs`: +3, `Brand`: +2
+- **Copy Difficulty:** `High`: +3, `Medium`: +1, `Low`: 0
+
+#### D. Execution Risk Score
+- **Base Score (10/10)**
+- **Risk Deductions:** Subtract 1.5 for `top_failure_reasons` (up to -6). Subtract 1 for `critical_assumptions` (up to -4).
+- **Regulatory Penalty:** Subtract 2 if concerns exist.
+
+### Overall Score Calculation (0-100)
+The overall score is a weighted average:
+- Market: 20%
+- Competition: 25%
+- Moat: 35%
+- Execution Risk: 20%
+
+---
+
+## Gemini Integration & Fault Tolerance
+
+The AI interaction is handled by the `AIService` class using the `google-genai` Python SDK (`gemini-2.5-flash`).
+
+1. **Schema Validation**: The API response is parsed and validated using Pydantic `model_validate_json()`.
+2. **Auto-Repair Engine**: If validation fails due to minor schema discrepancies, a fallback sanitization loop coerces array lengths and attributes.
+3. **Partial Failure Recovery (`SectionError`)**: If an individual agent entirely fails validation or API limits, the pipeline gracefully catches the exception, returns a `SectionError(status="UNAVAILABLE")` for that specific section, and allows the remaining agents to continue generating the report. This prevents single-node failures from crashing the entire DAG.

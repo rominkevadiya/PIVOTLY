@@ -166,6 +166,7 @@ This document outlines the REST API endpoints available in the backend service. 
     "industry": "Software as a Service (SaaS)",
     "market_potential": "High",
     "recommendation": "Build",
+    "schema_version": 2,
     "created_at": "2026-06-16T12:05:00Z"
   }
 ]
@@ -196,99 +197,61 @@ This document outlines the REST API endpoints available in the backend service. 
   "industry": "Software as a Service (SaaS)",
   "market_potential": "High",
   "recommendation": "Build",
+  "schema_version": 2,
   "created_at": "2026-06-16T12:05:00Z",
   "report_json": {
-    "overview": {
-      "idea_summary": "AI platform for idea validation...",
-      "one_line_pitch": "Validate before you code."
+    "executive_summary": "An AI platform targeting indie hackers...",
+    "market_intelligence": {
+      "market_size_estimate": "$5B",
+      "growth_rate_estimate": "20% YoY",
+      "target_audience": ["Indie Hackers", "Solopreneurs"],
+      "identified_competitors": ["ValidatorX"],
+      "regulatory_concerns": [],
+      "evidence_list": []
     },
-    "industry": {
-      "primary_industry": "Software as a Service (SaaS)",
-      "sub_industry": "Developer Tools",
-      "industry_context": "The indie hacker movement is growing..."
+    "competitor_intelligence": {
+      "competitors": [],
+      "market_concentration": "Fragmented",
+      "evidence_list": []
     },
-    "target_audience": {
-      "primary_segment": "Indie Hackers",
-      "secondary_segment": "First-time founders",
-      "audience_insight": "Highly price-sensitive but value time."
+    "moat_analysis": {
+      "moat_type": "Network Effects",
+      "defensibility_explanation": "Users contribute validation data.",
+      "copy_difficulty": "Medium",
+      "network_effects_present": true,
+      "data_advantage_present": true,
+      "evidence_list": []
     },
-    "competitors": [
-      {
-        "name": "Validation Startup X",
-        "description": "Manual validation service.",
-        "strength": "Human touch.",
-        "threat_level": "Medium"
-      }
-    ],
-    "market_potential": {
-      "rating": "High",
-      "rationale": "High volume of new startups annually.",
-      "estimated_market_context": "Growing TAM in SaaS tooling.",
-      "tam": "$5B",
-      "sam": "$500M",
-      "som": "$10M"
+    "opportunity_gaps": ["No direct GitHub integration"],
+    "failure_analysis": {
+      "top_failure_reasons": ["AI commoditization"],
+      "critical_assumptions": ["Hackers will pay for validation"],
+      "largest_unknowns": ["Willingness to pay"],
+      "execution_risks": ["Building the scraper"]
     },
-    "failure_risks": [
-      {
-        "risk": "AI commoditization",
-        "description": "Anyone can build a wrapper.",
-        "severity": "High"
-      }
-    ],
-    "opportunity_gaps": [
-      {
-        "gap": "Integration with existing codebases",
-        "description": "Validating directly from repo descriptions."
-      }
-    ],
-    "improvement_suggestions": [
-      {
-        "suggestion": "Add live search",
-        "rationale": "Keeps competitive analysis fresh."
-      }
-    ],
-    "swot_analysis": {
-      "strengths": ["Strong engineering team"],
-      "weaknesses": ["Lack of marketing budget"],
-      "opportunities": ["Growing market for AI validation"],
-      "threats": ["Incumbent players adding AI"]
+    "why_this_could_win": ["Speed to market"],
+    "why_this_could_fail": ["Free alternatives"],
+    "what_must_be_true": ["Hackers pay $20/mo"],
+    "scorecard": {
+      "market_score": 8,
+      "competition_score": 5,
+      "feasibility_score": 9,
+      "monetization_score": 6,
+      "moat_score": 4,
+      "execution_risk_score": 6,
+      "overall_score": 72,
+      "scoring_rationale": {}
     },
-    "go_to_market": {
-      "distribution_channels": ["Product Hunt", "Twitter", "IndieHackers"],
-      "customer_acquisition_strategy": "Content marketing and SEO",
-      "early_adopter_profile": "Solopreneurs shipping multiple products"
+    "action_plan": {
+      "go_to_market_phases": ["Launch on ProductHunt"],
+      "unit_economics_cac": "$5",
+      "unit_economics_ltv": "$100",
+      "unit_economics_payback": "1 month",
+      "next_steps": ["Build MVP"],
+      "founder_recommendation": "Focus on distribution first."
     },
-    "next_steps": [
-      {
-        "action_item": "Build landing page",
-        "priority": "High",
-        "timeframe": "Week 1"
-      }
-    ],
-    "unit_economics": {
-      "revenue_streams": ["SaaS subscriptions", "Pay-per-report"],
-      "cost_structure": ["LLM API costs", "Hosting"],
-      "estimated_margin_potential": "High (70%+)"
-    },
-    "recommendation": {
-      "decision": "Build",
-      "rationale": "Clear problem with a high willingness to try solutions.",
-      "confidence": "Medium"
-    },
-    "scoring_rubric": {
-      "market_size": { "score": 8, "reasoning": "Large TAM." },
-      "competitive_advantage": { "score": 5, "reasoning": "Low barrier to entry." },
-      "technical_feasibility": { "score": 9, "reasoning": "Standard API wrappers." },
-      "monetization_potential": { "score": 6, "reasoning": "Hard to charge indie hackers." },
-      "founder_fit": { "score": 8, "reasoning": "Assuming founder is a dev." },
-      "overall_score": 72
-    },
-    "references": [
-      {
-        "name": "Validation Startup X",
-        "url": "https://example.com/startup-x"
-      }
-    ]
+    "recommendation": "Build",
+    "recommendation_rationale": "Clear problem with a high willingness to try solutions."
   }
 }
 ```

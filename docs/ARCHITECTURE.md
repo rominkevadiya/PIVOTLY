@@ -114,7 +114,7 @@ For complete details on context gathering (`ddgs`), prompt construction, Gemini 
 
 ## Deployment Architecture
 
-The platform is deployed in a production-ready AWS environment using a decoupled, multi-node architecture:
+The platform is deployed in a production-ready AWS environment using a decoupled, "Zero-AWS-Cost" lean multi-node architecture:
 
 *   **Application Server (AWS EC2)**:
     *   **Reverse Proxy**: Nginx handles incoming HTTP traffic and serves the compiled React/Vite static assets directly from the filesystem. It also acts as a reverse proxy forwarding `/api` requests to the backend.
@@ -124,18 +124,19 @@ The platform is deployed in a production-ready AWS environment using a decoupled
     *   Managed PostgreSQL database hosted on AWS Relational Database Service (RDS).
     *   Provides automated backups, scaling, and high availability. The database is securely accessed via the backend in a VPC using SSL encryption (`sslmode=require`).
 
+*(Note: We explicitly avoid Celery, Redis, or Elastic Load Balancers to minimize baseline infrastructure costs, relying instead on FastAPI native features and PostgreSQL).*
+
 ## Request Lifecycle (Example: Analyze Idea)
 
 1.  **Client:** POSTs to `/api/v1/analyze` with `{"idea_text": "...", "region": "...", "budget_range": "..."}` and a Bearer JWT.
 2.  **Router (`analyze.py`):** Intercepts the request. FastAPI validates the payload against `AnalyzeRequest` and the JWT against `get_current_user`.
 3.  **Service Orchestration (`ReportService`):**
-    *   Checks `RateLimitRepository` to ensure the user hasn't exceeded 5 requests today.
-    *   Calls `search_competitors()` to asynchronously scrape DuckDuckGo for context.
-    *   Calls `AIService.generate_report()`.
-4.  **AI Layer:** Constructs the prompt, calls Gemini, parses the JSON string, and returns a validated Pydantic `VentureReport` object.
-5.  **Persistence:** `ReportService` serializes the Pydantic object and calls `ReportRepository.create()` to save it to Postgres (saving the payload in the `JSONB` column).
-6.  **Rate Limit Update:** Calls `RateLimitRepository.increment()` to update the daily usage count via atomic upsert.
-7.  **Response:** The router returns the new `report_id` to the frontend, which then navigates to the detailed report view.
+    *   Checks `RateLimitRepository` to ensure the user hasn't exceeded limits.
+    *   (Planned V2): Enqueues the processing into a FastAPI `BackgroundTask` and returns a pending `report_id` immediately to the client.
+4.  **AI Layer (DAG):** Executes `ResearchService`, `CompetitorService`, `ContrarianService`, and `MoatService` concurrently using `asyncio.gather`. Each agent parses and validates its own Pydantic subset.
+5.  **Scoring Layer:** `ScoringService` evaluates the deterministic metrics based on agent outputs.
+6.  **Persistence:** `ReportService` serializes the final `VentureReportV2` Pydantic object and calls `ReportRepository.create()` to save it to Postgres (saving the payload in the `JSONB` column).
+7.  **Rate Limit Update:** Calls `RateLimitRepository.increment()`.
 
 ## Module Breakdown
 
@@ -145,7 +146,7 @@ The platform is deployed in a production-ready AWS environment using a decoupled
 *   **`models`**: SQLAlchemy table definitions defining the relational database schema.
 *   **`repositories`**: Data access objects abstracting SQL queries and transactions.
 *   **`schemas`**: Pydantic models for request/response serialization and validation.
-*   **`services`**: Pure business logic orchestrators.
+*   **`services`**: Pure business logic orchestrators. Contains the distinct AI agents (`ResearchService`, `CompetitorService`, etc.).
 *   **`utils`**: Helpers for JSON parsing, JWT token management, and prompt construction.
 *   **`mcp_server.py`**: Model Context Protocol implementation allowing external LLMs to interact with Pivotly's data.
 
@@ -158,6 +159,6 @@ The platform is deployed in a production-ready AWS environment using a decoupled
 
 ## Current Limitations & Future Improvements
 
-1.  **Long-Lived HTTP Requests:** The `analyze_idea` workflow executes the web scrape and the Gemini API call within a single HTTP request lifecycle. While we successfully offload these network calls to async threads (preventing FastAPI event loop starvation), the client still must hold an open connection for 20-30 seconds. A future improvement should implement WebSockets or a polling architecture (e.g., Celery/Redis).
+1.  **Long-Lived HTTP Requests:** The `analyze_idea` workflow executes the web scrape and the Gemini API call within a single HTTP request lifecycle. We are migrating this to FastAPI `BackgroundTasks` with client-side polling.
 2.  **Database-Backed Rate Limiting:** Rate limiting relies entirely on database queries. Under high load, this puts transaction pressure on PostgreSQL compared to a fast, in-memory store like Redis.
 3.  **Gemini Free-Tier Quota:** The system uses a free-tier API key limited to 20 requests per day. Adding backend rotation across multiple API keys will allow the system to scale without hitting 429 quota exhaustion.
