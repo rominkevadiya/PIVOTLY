@@ -7,7 +7,6 @@ from app.core.exceptions import RateLimitExceededError
 from app.models.report import Report
 from app.repositories.report_repository import ReportRepository
 from app.repositories.rate_limit_repository import RateLimitRepository
-from app.schemas.report import VentureReport
 from app.services.ai_service import AIService
 from app.services.search_service import search_venture_context
 
