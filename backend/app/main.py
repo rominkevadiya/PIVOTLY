@@ -9,6 +9,40 @@ from app.core.exceptions import register_exception_handlers
 from app.core.logging import configure_logging
 
 
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifecycle events for the FastAPI application."""
+    from app.core.database import SessionLocal
+    from app.models.report import Report
+    from app.schemas.report import ReportStatus
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    db = SessionLocal()
+    try:
+        stuck_reports = db.query(Report).filter(
+            Report.status.in_([ReportStatus.SCRAPING.value, ReportStatus.GENERATING.value])
+        ).all()
+        
+        count = 0
+        for report in stuck_reports:
+            report.status = ReportStatus.FAILED.value
+            report.error_message = "Server restarted during report generation. Please retry the analysis."
+            count += 1
+            
+        if count > 0:
+            db.commit()
+            logger.info(f"Recovered {count} stuck reports after server restart.")
+    except Exception as e:
+        logger.error(f"Failed to recover stuck reports: {e}")
+        db.rollback()
+    finally:
+        db.close()
+        
+    yield
+
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     settings = get_settings()
@@ -19,6 +53,7 @@ def create_app() -> FastAPI:
         version=settings.api_version,
         docs_url="/docs" if settings.environment == "development" else None,
         redoc_url="/redoc" if settings.environment == "development" else None,
+        lifespan=lifespan,
     )
 
     app.add_middleware(

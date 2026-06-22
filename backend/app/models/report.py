@@ -20,10 +20,14 @@ class Report(Base):
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True
     )
     idea_text: Mapped[str] = mapped_column(Text, nullable=False)
-    report_json: Mapped[dict] = mapped_column(JSONB, nullable=False)
-    industry: Mapped[str] = mapped_column(String(255), nullable=False)
-    market_potential: Mapped[str] = mapped_column(String(50), nullable=False)
-    recommendation: Mapped[str] = mapped_column(String(50), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDING", server_default="PENDING")
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    task_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    schema_version: Mapped[int] = mapped_column(nullable=False, default=1, server_default="1")
+    report_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    industry: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    market_potential: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    recommendation: Mapped[str | None] = mapped_column(String(50), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

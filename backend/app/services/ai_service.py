@@ -10,8 +10,20 @@ from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_excep
 
 from app.core.config import Settings
 from app.core.exceptions import AIServiceError
-from app.schemas.report import VentureReport
-from app.utils.prompt_builder import build_analysis_prompt
+from app.schemas.report import (
+    VentureReportV1,
+    ResearchContext,
+    CompetitorAnalysis,
+    MoatAnalysis,
+    ContrarianAnalysis
+)
+from app.utils.prompt_builder import (
+    build_analysis_prompt,
+    build_research_prompt,
+    build_competitor_prompt,
+    build_moat_prompt,
+    build_contrarian_prompt
+)
 
 logger = logging.getLogger(__name__)
 
@@ -139,10 +151,10 @@ class AIService:
         search_context: str = "",
         region: str | None = None,
         budget_range: str | None = None
-    ) -> VentureReport:
+    ) -> VentureReportV1:
         """Generate and validate a structured venture analysis report."""
         prompt = build_analysis_prompt(idea_text, search_context, region, budget_range)
-        raw_response = await self._call_gemini(prompt)
+        raw_response = await self._call_gemini(prompt, VentureReportV1)
         return self._parse_and_validate(raw_response, prompt)
 
     @retry(
@@ -151,7 +163,7 @@ class AIService:
         retry=retry_if_exception_type(Exception),
         reraise=True
     )
-    async def _execute_with_retry(self, prompt: str):
+    async def _execute_with_retry(self, prompt: str, schema_class):
         """Execute the actual API call with exponential backoff retries for transient errors."""
         from google.genai import types
         return await self.client.aio.models.generate_content(
@@ -161,11 +173,11 @@ class AIService:
                 temperature=0.4,
                 max_output_tokens=32768,
                 response_mime_type="application/json",
-                response_schema=VentureReport,
+                response_schema=schema_class,
             ),
         )
 
-    async def _call_gemini(self, prompt: str) -> str:
+    async def _call_gemini(self, prompt: str, schema_class) -> str:
         """Call Gemini and return the raw response text."""
         try:
             from google import genai
@@ -173,7 +185,7 @@ class AIService:
             if self.client is None:
                 self.client = genai.Client(api_key=self.settings.gemini_api_key)
 
-            response = await self._execute_with_retry(prompt)
+            response = await self._execute_with_retry(prompt, schema_class)
         except Exception as exc:
             logger.exception("Gemini request failed after retries.")
             raise AIServiceError("Gemini request failed.") from exc
@@ -192,12 +204,17 @@ class AIService:
             raise AIServiceError("Gemini returned an empty response.")
         return response.text
 
-    def _parse_and_validate(self, raw_response: str, prompt: str) -> VentureReport:
+    def _parse_and_validate(self, raw_response: str, prompt: str, schema_class):
         """Parse raw Gemini output and validate it against the report schema."""
         try:
-            return VentureReport.model_validate_json(raw_response)
+            return schema_class.model_validate_json(raw_response)
         except ValidationError as exc:
             logger.info(f"Initial Pydantic validation failed: {exc}. Attempting auto-repair...")
+            if schema_class != VentureReportV1:
+                # Basic auto-repair for V2 could go here if needed.
+                trace_id = str(uuid.uuid4())
+                raise AIServiceError(f"Gemini returned malformed V2 JSON. TraceID: {trace_id}") from exc
+                
             try:
                 import json
                 import copy
@@ -217,7 +234,7 @@ class AIService:
                                 lst.append(default_factory())
                     return lst
 
-                # Coerce fields to match VentureReport Pydantic constraints
+                # Coerce fields to match VentureReportV1 Pydantic constraints
                 if 'competitors' in data:
                     data['competitors'] = sanitize_list(data['competitors'], 1, 5, lambda: {"name": "Placeholder", "website": None, "competitor_type": "Direct", "description": "Placeholder", "threat_level": "Low"})
                 if 'failure_risks' in data:
@@ -231,7 +248,7 @@ class AIService:
                     iv = data['investor_verdict']
                     for k in ['expected_concerns', 'potential_strengths']:
                         if k in iv:
-                            iv[k] = sanitize_list(iv[k], 1, 3, lambda: "Placeholder")
+                             iv[k] = sanitize_list(iv[k], 1, 3, lambda: "Placeholder")
 
                 if isinstance(data.get('swot'), dict):
                     sw = data['swot']
@@ -248,7 +265,7 @@ class AIService:
                 if 'next_steps' in data and data['next_steps'] is not None:
                     data['next_steps'] = sanitize_list(data['next_steps'], None, 5, lambda: {"priority": 1, "action": "Action", "rationale": "Rationale", "timeframe": "Week 1"})
 
-                validated = VentureReport.model_validate(data)
+                validated = VentureReportV1.model_validate(data)
                 logger.info("Auto-repair and validation succeeded!")
                 return validated
             except Exception as repair_exc:
@@ -275,3 +292,59 @@ class AIService:
                 
             raise AIServiceError(f"Gemini returned malformed report JSON. TraceID: {trace_id}") from exc
 
+    async def generate_research_context(self, idea_text: str, search_context: str):
+        """Generate the ResearchContext using Gemini."""
+        try:
+            prompt = build_research_prompt(idea_text, search_context)
+            raw_response = await self._call_gemini(prompt, ResearchContext)
+            return self._parse_and_validate(raw_response, prompt, ResearchContext)
+        except Exception as e:
+            logger.error(f"Research agent failed: {e}")
+            from app.schemas.report import SectionError
+            return SectionError(error=str(e))
+
+    async def generate_competitor_analysis(self, idea_text: str, search_context: str, research_context_json: str):
+        """Generate Competitor Analysis."""
+        try:
+            prompt = build_competitor_prompt(idea_text, search_context, research_context_json)
+            raw_response = await self._call_gemini(prompt, CompetitorAnalysis)
+            return self._parse_and_validate(raw_response, prompt, CompetitorAnalysis)
+        except Exception as e:
+            logger.error(f"Competitor agent failed: {e}")
+            from app.schemas.report import SectionError
+            return SectionError(error=str(e))
+        
+    async def generate_moat_analysis(self, idea_text: str, search_context: str, competitor_analysis_json: str):
+        """Generate Moat Analysis."""
+        try:
+            prompt = build_moat_prompt(idea_text, search_context, competitor_analysis_json)
+            raw_response = await self._call_gemini(prompt, MoatAnalysis)
+            return self._parse_and_validate(raw_response, prompt, MoatAnalysis)
+        except Exception as e:
+            logger.error(f"Moat agent failed: {e}")
+            from app.schemas.report import SectionError
+            return SectionError(error=str(e))
+        
+    async def generate_contrarian_analysis(self, idea_text: str, search_context: str, research_context_json: str):
+        """Generate Contrarian Analysis."""
+        try:
+            prompt = build_contrarian_prompt(idea_text, search_context, research_context_json)
+            raw_response = await self._call_gemini(prompt, ContrarianAnalysis)
+            return self._parse_and_validate(raw_response, prompt, ContrarianAnalysis)
+        except Exception as e:
+            logger.error(f"Contrarian agent failed: {e}")
+            from app.schemas.report import SectionError
+            return SectionError(error=str(e))
+
+    async def generate_action_plan(self, idea_text: str, scoring_json: str):
+        """Generate Action Plan."""
+        try:
+            from app.schemas.report import ActionPlan, SectionError
+            from app.utils.prompt_builder import build_action_prompt
+            prompt = build_action_prompt(idea_text, scoring_json)
+            raw_response = await self._call_gemini(prompt, ActionPlan)
+            return self._parse_and_validate(raw_response, prompt, ActionPlan)
+        except Exception as e:
+            logger.error(f"Action plan agent failed: {e}")
+            from app.schemas.report import SectionError
+            return SectionError(error=str(e))

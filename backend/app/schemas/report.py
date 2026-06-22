@@ -1,6 +1,7 @@
 """Schemas for persisted and AI-generated reports."""
 
 from datetime import datetime
+from enum import Enum
 from typing import Literal
 from uuid import UUID
 
@@ -9,6 +10,12 @@ from pydantic import BaseModel, ConfigDict, Field
 Rating = Literal["High", "Medium", "Low"]
 RecommendationDecision = Literal["Build", "Pivot", "Research Further", "Avoid"]
 
+class ReportStatus(str, Enum):
+    PENDING = "PENDING"
+    SCRAPING = "SCRAPING"
+    GENERATING = "GENERATING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
 
 class OverviewSection(BaseModel):
     """Report overview section."""
@@ -151,7 +158,7 @@ class InvestorVerdictSection(BaseModel):
 
 # ── Core report model ──────────────────────────────────────────────────────────
 
-class VentureReport(BaseModel):
+class VentureReportV1(BaseModel):
     """Simplified report schema expected from Gemini."""
 
     model_config = ConfigDict(extra="allow")  # Allows backward compatibility with extra fields in stored reports
@@ -174,15 +181,93 @@ class VentureReport(BaseModel):
     investor_verdict: InvestorVerdictSection | None = None
 
 
+class Evidence(BaseModel):
+    """Citation or proof for an analysis point."""
+    claim: str = Field(..., description="The specific claim being made")
+    source_url: str | None = Field(default=None, description="URL source if available")
+    reliability: Rating = Field(..., description="High/Medium/Low based on the source quality")
+
+
+class ResearchContext(BaseModel):
+    """Processed output from Tavily."""
+    market_overview: str
+    target_demographics: list[str]
+    market_size_indicators: list[Evidence]
+    key_trends: list[str]
+
+
+class V2CompetitorItem(BaseModel):
+    name: str
+    website: str | None = None
+    copy_risk: Rating
+    threat_level: Rating
+    differentiator_weakness: str
+    evidence_list: list[Evidence]
+
+
+class CompetitorAnalysis(BaseModel):
+    competitors: list[V2CompetitorItem]
+    market_saturation: Rating
+    summary: str
+
+
+class MoatAnalysis(BaseModel):
+    network_effects: str | None = None
+    switching_costs: str | None = None
+    brand_power: str | None = None
+    overall_defensibility: Rating
+    evidence_list: list[Evidence]
+
+
+class ContrarianAnalysis(BaseModel):
+    critical_assumptions: list[str]
+    why_it_might_fail: list[str]
+    hidden_risks: list[str]
+    evidence_list: list[Evidence]
+
+
+class SectionError(BaseModel):
+    """Fallback schema for an agent section that failed to generate."""
+    status: Literal["UNAVAILABLE"] = "UNAVAILABLE"
+    error: str
+
+
+class ActionPlan(BaseModel):
+    """Actionable execution steps derived from the analysis."""
+    go_to_market_phases: list[str] = Field(..., min_length=1, max_length=4)
+    unit_economics_cac: str | None = None
+    unit_economics_ltv: str | None = None
+    unit_economics_payback: str | None = None
+    next_steps: list[NextStepItem] = Field(..., min_length=1, max_length=5)
+    founder_recommendation: str = Field(..., description="Actionable advice for the founder")
+
+
+class VentureReportV2(BaseModel):
+    """V2 Venture Intelligence Engine Output"""
+    model_config = ConfigDict(extra="allow")
+
+    idea_summary: str
+    research_context: ResearchContext | SectionError | None = None
+    competitor_analysis: CompetitorAnalysis | SectionError | None = None
+    moat_analysis: MoatAnalysis | SectionError | None = None
+    contrarian_analysis: ContrarianAnalysis | SectionError | None = None
+    action_plan: ActionPlan | SectionError | None = None
+    scoring_rubric: ScoringRubricSection | SectionError | None = None
+    recommendation: RecommendationSection | SectionError | None = None
+
+
 class ReportResponse(BaseModel):
     """API response for a stored report."""
 
     id: UUID
+    status: ReportStatus
+    schema_version: int = 1
+    error_message: str | None = None
     idea_text: str
-    report_json: VentureReport
-    industry: str
-    market_potential: str
-    recommendation: str
+    report_json: VentureReportV1 | VentureReportV2 | None = None
+    industry: str | None = None
+    market_potential: str | None = None
+    recommendation: str | None = None
     created_at: datetime
 
 
@@ -190,10 +275,13 @@ class ReportSummary(BaseModel):
     """Lightweight report summary for history list."""
 
     id: UUID
+    status: ReportStatus
+    schema_version: int = 1
+    error_message: str | None = None
     idea_snippet: str
-    industry: str
-    market_potential: str
-    recommendation: str
+    industry: str | None = None
+    market_potential: str | None = None
+    recommendation: str | None = None
     overall_score: int | None = None
     created_at: datetime
 

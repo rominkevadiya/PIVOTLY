@@ -23,7 +23,7 @@ class AnalyzeRequest(BaseModel):
 
 
 class AnalyzeResponse(BaseModel):
-    """Response returned after successful report generation."""
+    """Response returned after successful request validation."""
 
     report_id: str
-    status: str = "success"
+    status: str = "PENDING"

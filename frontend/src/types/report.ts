@@ -65,7 +65,7 @@ export interface UnitEconomicsSection {
 
 // ── Core report ────────────────────────────────────────────────────────────────
 
-export interface VentureReport {
+export interface VentureReportV1 {
   overview: {
     idea_summary: string;
     one_line_pitch: string;
@@ -152,6 +152,11 @@ export interface VentureReport {
   };
 }
 
+export interface VentureReportV2 {
+  // Placeholder for V2 schema
+  v2_enabled: boolean;
+  message: string;
+}
 
 export interface AnalyzeResponse {
   report_id: string;
@@ -161,9 +166,21 @@ export interface AnalyzeResponse {
 export interface ReportResponse {
   id: string;
   idea_text: string;
-  report_json: VentureReport;
+  schema_version: number;
+  report_json: VentureReportV1 | VentureReportV2;
   industry: string;
   market_potential: Rating;
   recommendation: RecommendationDecision;
+  created_at: string;
+}
+
+export interface ReportSummary {
+  id: string;
+  idea_text: string;
+  schema_version: number;
+  industry: string;
+  market_potential: Rating;
+  recommendation: RecommendationDecision;
+  status: string;
   created_at: string;
 }

@@ -51,3 +51,88 @@ IMPORTANT RULES:
 - EVIDENCE: Whenever you make a claim about Market Size or the Final Recommendation, you MUST populate the `evidence` field with a direct data point or quote, preferably from the LIVE WEB SEARCH RESULTS. Do not hallucinate numbers.
 - CONFIDENCE SCORES: Calculate `confidence_score` (1-100) based strictly on evidence. If you have exact numbers from search results, score > 85. If you are guessing based on parametric memory, score < 50.
 """
+
+def build_research_prompt(idea_text: str, search_context: str) -> str:
+    """Build the prompt used for ResearchContext parsing."""
+    return f"""
+You are an expert venture analyst researcher.
+Synthesize the provided raw web search data into a structured ResearchContext.
+
+IDEA: {idea_text}
+WEB SEARCH DATA:
+{search_context}
+
+Extract the market overview, target demographics, key trends, and specific market size indicators with evidence citations.
+Be highly factual and cite your sources.
+"""
+
+def build_competitor_prompt(idea_text: str, search_context: str, research_context_json: str) -> str:
+    """Build the prompt for Competitor Intelligence."""
+    return f"""
+You are a competitive intelligence director.
+Identify specific, real-world competitors for this startup idea based on the research context and raw search data.
+
+IDEA: {idea_text}
+WEB SEARCH DATA (USE FOR CITATIONS):
+{search_context}
+RESEARCH CONTEXT:
+{research_context_json}
+
+Identify at least 2 direct or indirect competitors.
+Assess their copy risk (how easily they could copy this idea), threat level, and their main differentiator/weakness.
+Provide evidence for your claims and cite `source_url` exclusively from the WEB SEARCH DATA. Do not hallucinate competitors or URLs.
+"""
+
+def build_moat_prompt(idea_text: str, search_context: str, competitor_analysis_json: str) -> str:
+    """Build the prompt for Moat Analysis."""
+    return f"""
+You are a top-tier venture capitalist specializing in defensibility and network effects.
+Analyze the defensibility of this idea against the established competitors.
+
+IDEA: {idea_text}
+WEB SEARCH DATA (USE FOR CITATIONS):
+{search_context}
+COMPETITORS:
+{competitor_analysis_json}
+
+Identify potential network effects, switching costs, and brand power.
+Provide an overall defensibility rating and concrete evidence supporting your analysis.
+Whenever you provide an `Evidence` claim, you must extract a real `source_url` from the WEB SEARCH DATA.
+Be critical. Most ideas have low defensibility.
+"""
+
+def build_contrarian_prompt(idea_text: str, search_context: str, research_context_json: str) -> str:
+    """Build the prompt for Contrarian Analysis."""
+    return f"""
+You are a skeptical, contrarian Sequoia Partner. Your job is to actively find holes in the idea.
+
+IDEA: {idea_text}
+WEB SEARCH DATA (USE FOR CITATIONS):
+{search_context}
+RESEARCH CONTEXT:
+{research_context_json}
+
+Identify the critical assumptions the founder is making.
+List specific reasons why this idea might fail and hidden risks they are ignoring.
+Provide evidence or historical analogies for your claims, exclusively citing `source_url` from the WEB SEARCH DATA.
+Be brutal but fair. Do not hallucinate URLs.
+"""
+
+def build_action_prompt(idea_text: str, scoring_json: str) -> str:
+    """Build the prompt for Actionable Execution Steps."""
+    return f"""
+You are an expert startup operator and former Y-Combinator partner.
+Based on the idea and its calculated scoring, provide a highly actionable execution plan.
+
+IDEA: {idea_text}
+DETERMINISTIC SCORES:
+{scoring_json}
+
+Provide:
+1. A phased Go-To-Market strategy (1 to 4 phases).
+2. Estimated Unit Economics (CAC, LTV, and payback period) based on typical industry benchmarks for this type of idea.
+3. Concrete, prioritized Next Steps.
+4. A final Founder Recommendation with actionable advice on whether to build, pivot, or research further based on the scores.
+Be extremely concise.
+"""
+

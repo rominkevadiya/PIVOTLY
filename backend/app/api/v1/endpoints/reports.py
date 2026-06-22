@@ -26,11 +26,14 @@ def list_reports(
     return [
         ReportSummary(
             id=r.id,
+            status=r.status,
+            schema_version=r.schema_version,
+            error_message=r.error_message,
             idea_snippet=r.idea_text[:80] + ("..." if len(r.idea_text) > 80 else ""),
             industry=r.industry,
             market_potential=r.market_potential,
             recommendation=r.recommendation,
-            overall_score=r.report_json.get("scoring_rubric", {}).get("overall_score") if isinstance(r.report_json, dict) else None,
+            overall_score=None,  # Deferred loading optimization: Do not access report_json here
             created_at=r.created_at,
         )
         for r in reports
@@ -54,10 +57,33 @@ def get_report(
 
     return ReportResponse(
         id=report.id,
+        status=report.status,
+        schema_version=report.schema_version,
+        error_message=report.error_message,
         idea_text=report.idea_text,
-        report_json=report_service.validate_stored_report(report.report_json),
+        report_json=report_service.validate_stored_report(report.report_json, report.schema_version) if report.report_json else None,
         industry=report.industry,
         market_potential=report.market_potential,
         recommendation=report.recommendation,
         created_at=report.created_at,
     )
+
+@router.get("/reports/{report_id}/status")
+def get_report_status(
+    report_id: UUID,
+    current_user: User = Depends(get_current_user),
+    report_service: ReportService = Depends(get_report_service),
+) -> dict:
+    """Return the lightweight status of a specific report."""
+    report = report_service.get_report(report_id)
+    if report is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found.")
+
+    if report.user_id is not None and report.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
+
+    return {
+        "report_id": str(report.id),
+        "status": report.status,
+        "error_message": report.error_message,
+    }
