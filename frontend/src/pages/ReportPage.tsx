@@ -22,17 +22,47 @@ export function ReportPage() {
 
   useEffect(() => {
     if (!reportId) { setError("Report ID is missing."); setIsLoading(false); return; }
-    getReport(reportId)
-      .then(setReport)
-      .catch((err) => setError(err instanceof Error ? err.message : "Unable to load report."))
-      .finally(() => setIsLoading(false));
+    
+    let isSubscribed = true;
+    let pollTimeout: number | undefined;
+
+    const fetchReport = async () => {
+      try {
+        const data = await getReport(reportId);
+        if (!isSubscribed) return;
+        
+        setReport(data);
+        setError(null);
+        
+        if (data.status === "FAILED") {
+          setError(data.error_message || "Report generation failed.");
+          setIsLoading(false);
+        } else if (data.status === "COMPLETED") {
+          setIsLoading(false);
+        } else {
+          // It's still processing (PENDING, SCRAPING, GENERATING)
+          pollTimeout = window.setTimeout(fetchReport, 3000);
+        }
+      } catch (err) {
+        if (!isSubscribed) return;
+        setError(err instanceof Error ? err.message : "Unable to load report.");
+        setIsLoading(false);
+      }
+    };
+
+    fetchReport();
+
+    return () => {
+      isSubscribed = false;
+      if (pollTimeout) clearTimeout(pollTimeout);
+    };
   }, [reportId]);
 
   return (
     <AppLayout>
-      {isLoading ? <LoadingState message="Loading report data..." /> : null}
-      {error ? <ErrorMessage message={error} /> : null}
-      {report ? <ReportRouter report={report} /> : null}
+      {isLoading ? <LoadingState message={report?.status ? `Report is ${report.status.toLowerCase()}...` : "Loading report data..."} /> : null}
+      {error && !isLoading ? <ErrorMessage message={error} /> : null}
+      {report && report.status === "COMPLETED" && !isLoading ? <ReportRouter report={report} /> : null}
     </AppLayout>
   );
 }

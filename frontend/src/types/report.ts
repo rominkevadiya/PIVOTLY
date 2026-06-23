@@ -167,7 +167,9 @@ export interface ReportResponse {
   id: string;
   idea_text: string;
   schema_version: number;
-  report_json: VentureReportV1 | VentureReportV2;
+  report_json: VentureReportV1 | VentureReportV2 | null;
+  status: "PENDING" | "SCRAPING" | "GENERATING" | "COMPLETED" | "FAILED";
+  error_message: string | null;
   industry: string;
   market_potential: Rating;
   recommendation: RecommendationDecision;
