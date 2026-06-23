@@ -4,7 +4,8 @@ from app.schemas.report import (
     MoatAnalysis,
     ContrarianAnalysis,
     ScoringRubricSection,
-    RecommendationSection
+    RecommendationSection,
+    SectionError
 )
 
 class ScoringService:
@@ -12,21 +13,21 @@ class ScoringService:
     
     @staticmethod
     def calculate_score(
-        research: ResearchContext | None,
-        competitors: CompetitorAnalysis | None,
-        moat: MoatAnalysis | None,
-        contrarian: ContrarianAnalysis | None,
+        research: ResearchContext | SectionError | None,
+        competitors: CompetitorAnalysis | SectionError | None,
+        moat: MoatAnalysis | SectionError | None,
+        contrarian: ContrarianAnalysis | SectionError | None,
     ) -> ScoringRubricSection:
         """Calculate a deterministic score based on the outputs of the AI agents."""
         
         # 1. Market Size Score
         market_size_score = 5
-        if research and research.market_size_indicators:
+        if research and not isinstance(research, SectionError) and research.market_size_indicators:
             market_size_score = min(5 + len(research.market_size_indicators), 10)
             
         # 2. Competitive Advantage Score
         competitive_advantage_score = 5
-        if moat:
+        if moat and not isinstance(moat, SectionError):
             if moat.overall_defensibility == "High":
                 competitive_advantage_score = 9
             elif moat.overall_defensibility == "Medium":
@@ -36,12 +37,12 @@ class ScoringService:
                 
         # 3. Technical Feasibility Score
         technical_feasibility_score = 7
-        if contrarian and contrarian.hidden_risks:
+        if contrarian and not isinstance(contrarian, SectionError) and contrarian.hidden_risks:
             technical_feasibility_score = max(1, 10 - len(contrarian.hidden_risks))
             
         # 4. Monetization Potential Score
         monetization_potential_score = 6
-        if competitors:
+        if competitors and not isinstance(competitors, SectionError):
             if competitors.market_saturation == "Low":
                 monetization_potential_score += 2
             elif competitors.market_saturation == "High":
