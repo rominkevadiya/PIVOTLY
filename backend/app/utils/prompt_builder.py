@@ -1,7 +1,33 @@
-"""Prompt construction for venture analysis."""
+"""Prompt construction for venture analysis.
 
+Architecture: Skills-based prompt assembly.
+Each V2 agent prompt is built from three layers:
+  1. Shared rules (schema, citation, evidence, anti-hallucination) — loaded from skills/shared/
+  2. Agent-specific skill instruction — loaded from skills/<agent>_skill.md
+  3. Runtime context (idea text, search data, prior agent output)
+
+This eliminates duplicated instruction blocks across agents and reduces token consumption.
+V1 prompt (build_analysis_prompt) is unchanged for full backward compatibility.
+"""
+
+import logging
 from datetime import datetime, timezone
 
+from app.utils.skill_loader import load_shared_rules, load_skill
+
+logger = logging.getLogger(__name__)
+
+
+def _log_prompt_size(agent_name: str, prompt: str) -> None:
+    """Log prompt character count for token consumption monitoring."""
+    logger.info(
+        "Prompt size",
+        extra={"agent": agent_name, "chars": len(prompt)},
+    )
+    logger.info(f"[prompt_metrics] agent={agent_name} chars={len(prompt)}")
+
+
+# ── V1 Prompt (Unchanged — Full Backward Compatibility) ────────────────────────
 
 def build_analysis_prompt(
     idea_text: str,
@@ -9,7 +35,7 @@ def build_analysis_prompt(
     region: str | None = None,
     budget_range: str | None = None,
 ) -> str:
-    """Build the prompt used for Gemini analysis."""
+    """Build the prompt used for Gemini V1 single-shot analysis. Unchanged."""
     analysis_date = datetime.now(timezone.utc).date().isoformat()
 
     search_section = ""
@@ -22,7 +48,7 @@ def build_analysis_prompt(
     region_context = f"REGION: {region}" if region else "REGION: Not specified"
     budget_context = f"BUDGET RANGE: {budget_range}" if budget_range else "BUDGET RANGE: Not specified"
 
-    return f"""
+    prompt = f"""
 You are an expert startup analyst and venture capital researcher.
 Evaluate the startup idea provided. Be realistic, critical, and data-aware. Do not be overly optimistic.
 
@@ -51,88 +77,141 @@ IMPORTANT RULES:
 - EVIDENCE: Whenever you make a claim about Market Size or the Final Recommendation, you MUST populate the `evidence` field with a direct data point or quote, preferably from the LIVE WEB SEARCH RESULTS. Do not hallucinate numbers.
 - CONFIDENCE SCORES: Calculate `confidence_score` (1-100) based strictly on evidence. If you have exact numbers from search results, score > 85. If you are guessing based on parametric memory, score < 50.
 """
+    _log_prompt_size("v1_analysis", prompt)
+    return prompt
+
+
+# ── V2 Skills-Based Agent Prompts ──────────────────────────────────────────────
 
 def build_research_prompt(idea_text: str, search_context: str) -> str:
-    """Build the prompt used for ResearchContext parsing."""
-    return f"""
-You are an expert venture analyst researcher.
-Synthesize the provided raw web search data into a structured ResearchContext.
+    """Assemble the Research Agent prompt from skills + runtime context."""
+    shared_rules = load_shared_rules()
+    research_skill = load_skill("research_skill")
 
+    prompt = f"""# SHARED RULES
+{shared_rules}
+
+---
+
+# AGENT SKILL
+{research_skill}
+
+---
+
+# RUNTIME CONTEXT
 IDEA: {idea_text}
+
 WEB SEARCH DATA:
 {search_context}
-
-Extract the market overview, target demographics, key trends, and specific market size indicators with evidence citations.
-Be highly factual and cite your sources.
 """
+    _log_prompt_size("research_agent", prompt)
+    return prompt
+
 
 def build_competitor_prompt(idea_text: str, search_context: str, research_context_json: str) -> str:
-    """Build the prompt for Competitor Intelligence."""
-    return f"""
-You are a competitive intelligence director.
-Identify specific, real-world competitors for this startup idea based on the research context and raw search data.
+    """Assemble the Competitor Intelligence Agent prompt from skills + runtime context."""
+    shared_rules = load_shared_rules()
+    competitor_skill = load_skill("competitor_skill")
 
+    prompt = f"""# SHARED RULES
+{shared_rules}
+
+---
+
+# AGENT SKILL
+{competitor_skill}
+
+---
+
+# RUNTIME CONTEXT
 IDEA: {idea_text}
+
 WEB SEARCH DATA (USE FOR CITATIONS):
 {search_context}
-RESEARCH CONTEXT:
-{research_context_json}
 
-Identify at least 2 direct or indirect competitors.
-Assess their copy risk (how easily they could copy this idea), threat level, and their main differentiator/weakness.
-Provide evidence for your claims and cite `source_url` exclusively from the WEB SEARCH DATA. Do not hallucinate competitors or URLs.
+RESEARCH CONTEXT (from Research Agent):
+{research_context_json}
 """
+    _log_prompt_size("competitor_agent", prompt)
+    return prompt
+
 
 def build_moat_prompt(idea_text: str, search_context: str, competitor_analysis_json: str) -> str:
-    """Build the prompt for Moat Analysis."""
-    return f"""
-You are a top-tier venture capitalist specializing in defensibility and network effects.
-Analyze the defensibility of this idea against the established competitors.
+    """Assemble the Moat / Defensibility Agent prompt from skills + runtime context."""
+    shared_rules = load_shared_rules()
+    moat_skill = load_skill("moat_skill")
 
+    prompt = f"""# SHARED RULES
+{shared_rules}
+
+---
+
+# AGENT SKILL
+{moat_skill}
+
+---
+
+# RUNTIME CONTEXT
 IDEA: {idea_text}
+
 WEB SEARCH DATA (USE FOR CITATIONS):
 {search_context}
-COMPETITORS:
-{competitor_analysis_json}
 
-Identify potential network effects, switching costs, and brand power.
-Provide an overall defensibility rating and concrete evidence supporting your analysis.
-Whenever you provide an `Evidence` claim, you must extract a real `source_url` from the WEB SEARCH DATA.
-Be critical. Most ideas have low defensibility.
+COMPETITOR ANALYSIS (from Competitor Agent):
+{competitor_analysis_json}
 """
+    _log_prompt_size("moat_agent", prompt)
+    return prompt
+
 
 def build_contrarian_prompt(idea_text: str, search_context: str, research_context_json: str) -> str:
-    """Build the prompt for Contrarian Analysis."""
-    return f"""
-You are a skeptical, contrarian Sequoia Partner. Your job is to actively find holes in the idea.
+    """Assemble the Contrarian Analysis Agent prompt from skills + runtime context."""
+    shared_rules = load_shared_rules()
+    contrarian_skill = load_skill("contrarian_skill")
 
+    prompt = f"""# SHARED RULES
+{shared_rules}
+
+---
+
+# AGENT SKILL
+{contrarian_skill}
+
+---
+
+# RUNTIME CONTEXT
 IDEA: {idea_text}
+
 WEB SEARCH DATA (USE FOR CITATIONS):
 {search_context}
-RESEARCH CONTEXT:
-{research_context_json}
 
-Identify the critical assumptions the founder is making.
-List specific reasons why this idea might fail and hidden risks they are ignoring.
-Provide evidence or historical analogies for your claims, exclusively citing `source_url` from the WEB SEARCH DATA.
-Be brutal but fair. Do not hallucinate URLs.
+RESEARCH CONTEXT (from Research Agent):
+{research_context_json}
 """
+    _log_prompt_size("contrarian_agent", prompt)
+    return prompt
+
 
 def build_action_prompt(idea_text: str, scoring_json: str) -> str:
-    """Build the prompt for Actionable Execution Steps."""
-    return f"""
-You are an expert startup operator and former Y-Combinator partner.
-Based on the idea and its calculated scoring, provide a highly actionable execution plan.
+    """Assemble the Action Plan Agent prompt from skills + runtime context."""
+    shared_rules = load_shared_rules()
+    action_skill = load_skill("action_skill")
 
+    prompt = f"""# SHARED RULES
+{shared_rules}
+
+---
+
+# AGENT SKILL
+{action_skill}
+
+---
+
+# RUNTIME CONTEXT
 IDEA: {idea_text}
-DETERMINISTIC SCORES:
+
+DETERMINISTIC SCORES (from Scoring Service):
 {scoring_json}
-
-Provide:
-1. A phased Go-To-Market strategy (1 to 4 phases).
-2. Estimated Unit Economics (CAC, LTV, and payback period) based on typical industry benchmarks for this type of idea.
-3. Concrete, prioritized Next Steps.
-4. A final Founder Recommendation with actionable advice on whether to build, pivot, or research further based on the scores.
-Be extremely concise.
 """
-
+    _log_prompt_size("action_agent", prompt)
+    return prompt
