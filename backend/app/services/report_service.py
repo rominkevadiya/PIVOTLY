@@ -113,6 +113,8 @@ class ReportService:
             recommendation = RecommendationSection(
                 decision=decision,
                 confidence=confidence,
+                confidence_score=scoring.overall_score,
+                evidence=f"Deterministic scoring pipeline returned {scoring.overall_score}/100.",
                 rationale=f"Based on an overall score of {scoring.overall_score}/100, the calculated recommendation is to {decision}."
             )
             
