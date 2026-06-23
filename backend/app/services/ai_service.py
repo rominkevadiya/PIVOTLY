@@ -155,7 +155,7 @@ class AIService:
         """Generate and validate a structured venture analysis report."""
         prompt = build_analysis_prompt(idea_text, search_context, region, budget_range)
         raw_response = await self._call_gemini(prompt, VentureReportV1)
-        return self._parse_and_validate(raw_response, prompt)
+        return self._parse_and_validate(raw_response, prompt, VentureReportV1)
 
     @retry(
         stop=stop_after_attempt(3),
