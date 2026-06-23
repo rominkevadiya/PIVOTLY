@@ -81,20 +81,62 @@ class ReportService:
                 # Increment quota now that heavy generation (paid API) is starting
                 bg_rate_limit_repo.increment(user_id, "idea_submission", date.today())
             
-            report = await self.ai_service.generate_report(
-                idea_text, 
-                search_context, 
-                region, 
-                budget_range
+            from app.schemas.report import SectionError
+            
+            # V2 Pipeline Orchestration
+            research_context = await self.ai_service.generate_research_context(idea_text, search_context)
+            
+            competitor_analysis = await self.ai_service.generate_competitor_analysis(
+                idea_text, search_context, 
+                research_context.model_dump_json() if not isinstance(research_context, SectionError) else "{}"
             )
+            
+            moat_analysis = await self.ai_service.generate_moat_analysis(
+                idea_text, search_context, 
+                competitor_analysis.model_dump_json() if not isinstance(competitor_analysis, SectionError) else "{}"
+            )
+            
+            contrarian_analysis = await self.ai_service.generate_contrarian_analysis(
+                idea_text, search_context, 
+                research_context.model_dump_json() if not isinstance(research_context, SectionError) else "{}"
+            )
+            
+            from app.services.scoring_service import ScoringService
+            scoring = ScoringService.calculate_score(research_context, competitor_analysis, moat_analysis, contrarian_analysis)
+            
+            action_plan = await self.ai_service.generate_action_plan(idea_text, scoring.model_dump_json())
+            
+            from app.schemas.report import VentureReportV2, RecommendationSection
+            
+            decision = "Build" if scoring.overall_score >= 70 else "Research Further" if scoring.overall_score >= 50 else "Pivot"
+            confidence = "High" if scoring.overall_score >= 70 else "Medium" if scoring.overall_score >= 50 else "Low"
+            recommendation = RecommendationSection(
+                decision=decision,
+                confidence=confidence,
+                rationale=f"Based on an overall score of {scoring.overall_score}/100, the calculated recommendation is to {decision}."
+            )
+            
+            report = VentureReportV2(
+                idea_summary=idea_text,
+                research_context=research_context,
+                competitor_analysis=competitor_analysis,
+                moat_analysis=moat_analysis,
+                contrarian_analysis=contrarian_analysis,
+                action_plan=action_plan,
+                scoring_rubric=scoring,
+                recommendation=recommendation
+            )
+            
+            primary_industry = getattr(research_context, "primary_industry", "Unknown") if not isinstance(research_context, SectionError) else "Unknown"
+            market_potential = getattr(research_context, "market_potential", "Unknown") if not isinstance(research_context, SectionError) else "Unknown"
             
             # 4. Success (status: COMPLETED)
             background_repo.mark_completed(
                 report_id=report_id,
                 report_json=report.model_dump(mode="json"),
-                industry=report.industry.primary_industry,
-                market_potential=report.market_potential.rating,
-                recommendation=report.recommendation.decision,
+                industry=primary_industry,
+                market_potential=market_potential,
+                recommendation=decision,
             )
 
         except Exception as e:
