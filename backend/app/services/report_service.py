@@ -40,6 +40,7 @@ class ReportService:
         pending_report = self.repository.create(
             idea_text=idea_text,
             user_id=user_id,
+            schema_version=2,
         )
             
         return pending_report
