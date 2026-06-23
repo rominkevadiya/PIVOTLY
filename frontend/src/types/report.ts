@@ -152,10 +152,78 @@ export interface VentureReportV1 {
   };
 }
 
+export interface Evidence {
+  claim: string;
+  source_url: string | null;
+  reliability: Rating;
+}
+
+export interface ResearchContext {
+  market_overview: string;
+  target_demographics: string[];
+  market_size_indicators: Evidence[];
+  key_trends: string[];
+}
+
+export interface V2CompetitorItem {
+  name: string;
+  website: string | null;
+  copy_risk: Rating;
+  threat_level: Rating;
+  differentiator_weakness: string;
+  evidence_list: Evidence[];
+}
+
+export interface CompetitorAnalysis {
+  competitors: V2CompetitorItem[];
+  market_saturation: Rating;
+  summary: string;
+}
+
+export interface MoatAnalysis {
+  network_effects: string | null;
+  switching_costs: string | null;
+  brand_power: string | null;
+  overall_defensibility: Rating;
+  evidence_list: Evidence[];
+}
+
+export interface ContrarianAnalysis {
+  critical_assumptions: string[];
+  why_it_might_fail: string[];
+  hidden_risks: string[];
+  evidence_list: Evidence[];
+}
+
+export interface SectionError {
+  status: "UNAVAILABLE";
+  error: string;
+}
+
+export interface ActionPlan {
+  go_to_market_phases: string[];
+  unit_economics_cac: string | null;
+  unit_economics_ltv: string | null;
+  unit_economics_payback: string | null;
+  next_steps: NextStepItem[];
+  founder_recommendation: string;
+}
+
 export interface VentureReportV2 {
-  // Placeholder for V2 schema
-  v2_enabled: boolean;
-  message: string;
+  idea_summary: string;
+  research_context: ResearchContext | SectionError | null;
+  competitor_analysis: CompetitorAnalysis | SectionError | null;
+  moat_analysis: MoatAnalysis | SectionError | null;
+  contrarian_analysis: ContrarianAnalysis | SectionError | null;
+  action_plan: ActionPlan | SectionError | null;
+  scoring_rubric: ScoringRubricSection | SectionError | null;
+  recommendation: {
+    decision: RecommendationDecision;
+    rationale: string;
+    evidence: string;
+    confidence: Rating;
+    confidence_score: number;
+  } | SectionError | null;
 }
 
 export interface AnalyzeResponse {
