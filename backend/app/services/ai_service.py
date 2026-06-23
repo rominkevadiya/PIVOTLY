@@ -1,4 +1,10 @@
-"""Gemini integration and AI report validation."""
+"""Gemini integration and AI report validation.
+
+Phase 2.5: Competitor, Moat, and Contrarian agents now receive a typed
+EvidenceLedger populated by the Research Agent, instead of raw search
+context strings. This reduces token consumption by eliminating redundant
+full-search-context re-injection across downstream agents.
+"""
 
 import logging
 import os
@@ -17,6 +23,7 @@ from app.schemas.report import (
     MoatAnalysis,
     ContrarianAnalysis
 )
+from app.schemas.evidence_ledger import EvidenceLedger
 from app.utils.prompt_builder import (
     build_analysis_prompt,
     build_research_prompt,
@@ -292,8 +299,74 @@ class AIService:
                 
             raise AIServiceError(f"Gemini returned malformed report JSON. TraceID: {trace_id}") from exc
 
+    @staticmethod
+    def build_evidence_ledger(research: ResearchContext, raw_search_context: str) -> EvidenceLedger:
+        """Convert a ResearchContext into a typed EvidenceLedger.
+
+        Called immediately after the Research Agent succeeds. The resulting
+        ledger is threaded through the orchestration DAG and consumed by
+        Competitor, Moat, and Contrarian agents in place of the raw
+        search context string.
+
+        Args:
+            research: Validated ResearchContext from the Research Agent.
+            raw_search_context: Original raw search text (preserved for debugging).
+
+        Returns:
+            Populated EvidenceLedger ready for downstream agent injection.
+        """
+        import re
+
+        # Extract all URLs present in raw search data for citation validation
+        url_pattern = re.compile(r'https?://[^\s\'"<>)\]]+', re.IGNORECASE)
+        found_urls = list(dict.fromkeys(url_pattern.findall(raw_search_context)))  # deduplicated, ordered
+
+        # Build citations list from market_size_indicators (the most evidence-rich source)
+        citations = list(research.market_size_indicators)
+
+        # Extract competitor names from market_overview heuristically (simple noun extraction)
+        # In future phases this can be replaced by a dedicated extraction step
+        competitor_refs: list[str] = []
+        for url in found_urls:
+            # Surface domain names as lightweight competitor hints
+            domain_match = re.search(r'https?://(?:www\.)?([^/]+)', url)
+            if domain_match:
+                domain = domain_match.group(1)
+                # Exclude generic search/news domains
+                generic_domains = {
+                    'google.com', 'youtube.com', 'twitter.com', 'reddit.com',
+                    'wikipedia.org', 'linkedin.com', 'medium.com', 'forbes.com',
+                    'techcrunch.com', 'bloomberg.com', 'reuters.com', 'wsj.com',
+                }
+                if domain not in generic_domains:
+                    competitor_refs.append(domain)
+
+        ledger = EvidenceLedger(
+            market_indicators=research.market_size_indicators,
+            competitor_references=competitor_refs[:10],  # cap at 10 to keep prompt block small
+            citations=citations,
+            risk_signals=[],  # Research Agent does not produce explicit risk signals; Contrarian seeds these
+            trend_signals=research.key_trends,
+            available_source_urls=found_urls[:20],  # cap at 20 most relevant URLs
+            raw_search_context=raw_search_context,
+        )
+
+        logger.info(
+            f"[evidence_ledger] built: "
+            f"market_indicators={len(ledger.market_indicators)}, "
+            f"competitor_refs={len(ledger.competitor_references)}, "
+            f"trend_signals={len(ledger.trend_signals)}, "
+            f"source_urls={len(ledger.available_source_urls)}, "
+            f"ledger_block_chars={len(ledger.to_prompt_block())}"
+        )
+        return ledger
+
     async def generate_research_context(self, idea_text: str, search_context: str):
-        """Generate the ResearchContext using Gemini."""
+        """Generate the ResearchContext using Gemini.
+
+        Returns:
+            ResearchContext on success, SectionError on failure.
+        """
         try:
             prompt = build_research_prompt(idea_text, search_context)
             raw_response = await self._call_gemini(prompt, ResearchContext)
@@ -303,32 +376,65 @@ class AIService:
             from app.schemas.report import SectionError
             return SectionError(error=str(e))
 
-    async def generate_competitor_analysis(self, idea_text: str, search_context: str, research_context_json: str):
-        """Generate Competitor Analysis."""
+    async def generate_competitor_analysis(
+        self,
+        idea_text: str,
+        ledger: EvidenceLedger,
+        competitor_analysis_json: str = "",
+    ):
+        """Generate Competitor Analysis from an EvidenceLedger (Phase 2.5).
+
+        Args:
+            idea_text: Original startup idea.
+            ledger: EvidenceLedger from Research Agent.
+            competitor_analysis_json: Unused; kept for call-site compatibility.
+        """
         try:
-            prompt = build_competitor_prompt(idea_text, search_context, research_context_json)
+            prompt = build_competitor_prompt(idea_text, ledger, competitor_analysis_json)
             raw_response = await self._call_gemini(prompt, CompetitorAnalysis)
             return self._parse_and_validate(raw_response, prompt, CompetitorAnalysis)
         except Exception as e:
             logger.error(f"Competitor agent failed: {e}")
             from app.schemas.report import SectionError
             return SectionError(error=str(e))
-        
-    async def generate_moat_analysis(self, idea_text: str, search_context: str, competitor_analysis_json: str):
-        """Generate Moat Analysis."""
+
+    async def generate_moat_analysis(
+        self,
+        idea_text: str,
+        ledger: EvidenceLedger,
+        competitor_analysis_json: str = "",
+    ):
+        """Generate Moat Analysis from an EvidenceLedger (Phase 2.5).
+
+        Args:
+            idea_text: Original startup idea.
+            ledger: EvidenceLedger from Research Agent.
+            competitor_analysis_json: Serialised CompetitorAnalysis from competitor agent.
+        """
         try:
-            prompt = build_moat_prompt(idea_text, search_context, competitor_analysis_json)
+            prompt = build_moat_prompt(idea_text, ledger, competitor_analysis_json)
             raw_response = await self._call_gemini(prompt, MoatAnalysis)
             return self._parse_and_validate(raw_response, prompt, MoatAnalysis)
         except Exception as e:
             logger.error(f"Moat agent failed: {e}")
             from app.schemas.report import SectionError
             return SectionError(error=str(e))
-        
-    async def generate_contrarian_analysis(self, idea_text: str, search_context: str, research_context_json: str):
-        """Generate Contrarian Analysis."""
+
+    async def generate_contrarian_analysis(
+        self,
+        idea_text: str,
+        ledger: EvidenceLedger,
+        research_context_json: str = "",
+    ):
+        """Generate Contrarian Analysis from an EvidenceLedger (Phase 2.5).
+
+        Args:
+            idea_text: Original startup idea.
+            ledger: EvidenceLedger from Research Agent.
+            research_context_json: Unused in Phase 2.5; kept for call-site compatibility.
+        """
         try:
-            prompt = build_contrarian_prompt(idea_text, search_context, research_context_json)
+            prompt = build_contrarian_prompt(idea_text, ledger, research_context_json)
             raw_response = await self._call_gemini(prompt, ContrarianAnalysis)
             return self._parse_and_validate(raw_response, prompt, ContrarianAnalysis)
         except Exception as e:
@@ -337,7 +443,7 @@ class AIService:
             return SectionError(error=str(e))
 
     async def generate_action_plan(self, idea_text: str, scoring_json: str):
-        """Generate Action Plan."""
+        """Generate Action Plan. Unchanged — operates on scoring data only."""
         try:
             from app.schemas.report import ActionPlan, SectionError
             from app.utils.prompt_builder import build_action_prompt

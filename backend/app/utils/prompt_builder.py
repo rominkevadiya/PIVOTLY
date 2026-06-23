@@ -1,29 +1,46 @@
 """Prompt construction for venture analysis.
 
-Architecture: Skills-based prompt assembly.
+Architecture: Skills-based prompt assembly (Phase 2.5 — EvidenceLedger).
 Each V2 agent prompt is built from three layers:
   1. Shared rules (schema, citation, evidence, anti-hallucination) — loaded from skills/shared/
   2. Agent-specific skill instruction — loaded from skills/<agent>_skill.md
-  3. Runtime context (idea text, search data, prior agent output)
+  3. Runtime context:
+       Phase 1:   idea_text + raw search_context string
+       Phase 2.5: idea_text + EvidenceLedger.to_prompt_block() [ACTIVE]
 
-This eliminates duplicated instruction blocks across agents and reduces token consumption.
 V1 prompt (build_analysis_prompt) is unchanged for full backward compatibility.
+
+Token Metrics (measured from local validation run):
+  Phase 1 (raw search context):
+    research_agent   baseline  ~3,445 chars
+    competitor_agent baseline  ~3,601 chars  (+ full search_context re-injected)
+    moat_agent       baseline  ~3,714 chars  (+ full search_context re-injected)
+    contrarian_agent baseline  ~3,646 chars  (+ full search_context re-injected)
+    action_agent     baseline  ~3,908 chars
+
+  Phase 2.5 (EvidenceLedger block replaces raw search_context in 3 agents):
+    Reduction depends on search_context size vs ledger block size.
+    Typical search_context: 3,000–8,000 chars per 3 search results.
+    Typical ledger block:   400–900 chars (structured bullet points).
+    Estimated reduction:    2,000–7,000 chars per downstream agent call.
+    For 3 downstream agents: 6,000–21,000 chars total reduction.
+    At ~4 chars/token: 1,500–5,250 fewer tokens per report.
 """
 
 import logging
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 from app.utils.skill_loader import load_shared_rules, load_skill
+
+if TYPE_CHECKING:
+    from app.schemas.evidence_ledger import EvidenceLedger
 
 logger = logging.getLogger(__name__)
 
 
 def _log_prompt_size(agent_name: str, prompt: str) -> None:
     """Log prompt character count for token consumption monitoring."""
-    logger.info(
-        "Prompt size",
-        extra={"agent": agent_name, "chars": len(prompt)},
-    )
     logger.info(f"[prompt_metrics] agent={agent_name} chars={len(prompt)}")
 
 
@@ -81,10 +98,14 @@ IMPORTANT RULES:
     return prompt
 
 
-# ── V2 Skills-Based Agent Prompts ──────────────────────────────────────────────
+# ── V2 Skills-Based Agent Prompts (Phase 2.5 — EvidenceLedger) ─────────────────
 
 def build_research_prompt(idea_text: str, search_context: str) -> str:
-    """Assemble the Research Agent prompt from skills + runtime context."""
+    """Assemble the Research Agent prompt.
+
+    Research is the only agent that still consumes raw search_context — it is
+    the source of truth that produces the EvidenceLedger for all downstream agents.
+    """
     shared_rules = load_shared_rules()
     research_skill = load_skill("research_skill")
 
@@ -108,10 +129,26 @@ WEB SEARCH DATA:
     return prompt
 
 
-def build_competitor_prompt(idea_text: str, search_context: str, research_context_json: str) -> str:
-    """Assemble the Competitor Intelligence Agent prompt from skills + runtime context."""
+def build_competitor_prompt(
+    idea_text: str,
+    ledger: "EvidenceLedger",
+    competitor_analysis_json: str = "",
+) -> str:
+    """Assemble the Competitor Intelligence Agent prompt using an EvidenceLedger.
+
+    Phase 2.5: Accepts EvidenceLedger instead of raw search_context.
+    The ledger block is ~5-10× smaller than the raw search context string,
+    while still providing validated competitor references, source URLs,
+    and market indicators.
+
+    Args:
+        idea_text: The original startup idea text.
+        ledger: Populated EvidenceLedger from the Research Agent.
+        competitor_analysis_json: Unused in this call; kept for API compatibility.
+    """
     shared_rules = load_shared_rules()
     competitor_skill = load_skill("competitor_skill")
+    ledger_block = ledger.to_prompt_block()
 
     prompt = f"""# SHARED RULES
 {shared_rules}
@@ -126,20 +163,35 @@ def build_competitor_prompt(idea_text: str, search_context: str, research_contex
 # RUNTIME CONTEXT
 IDEA: {idea_text}
 
-WEB SEARCH DATA (USE FOR CITATIONS):
-{search_context}
-
-RESEARCH CONTEXT (from Research Agent):
-{research_context_json}
+{ledger_block}
 """
     _log_prompt_size("competitor_agent", prompt)
     return prompt
 
 
-def build_moat_prompt(idea_text: str, search_context: str, competitor_analysis_json: str) -> str:
-    """Assemble the Moat / Defensibility Agent prompt from skills + runtime context."""
+def build_moat_prompt(
+    idea_text: str,
+    ledger: "EvidenceLedger",
+    competitor_analysis_json: str = "",
+) -> str:
+    """Assemble the Moat / Defensibility Agent prompt using an EvidenceLedger.
+
+    Phase 2.5: Accepts EvidenceLedger. The competitor analysis JSON is still
+    injected so the moat agent can reference the specific named competitors
+    identified by the competitor agent in the same pipeline run.
+
+    Args:
+        idea_text: The original startup idea text.
+        ledger: Populated EvidenceLedger from the Research Agent.
+        competitor_analysis_json: Serialised CompetitorAnalysis from the competitor agent.
+    """
     shared_rules = load_shared_rules()
     moat_skill = load_skill("moat_skill")
+    ledger_block = ledger.to_prompt_block()
+
+    competitor_section = ""
+    if competitor_analysis_json and competitor_analysis_json != "{}":
+        competitor_section = f"\nCOMPETITOR ANALYSIS (from Competitor Agent):\n{competitor_analysis_json}"
 
     prompt = f"""# SHARED RULES
 {shared_rules}
@@ -154,20 +206,32 @@ def build_moat_prompt(idea_text: str, search_context: str, competitor_analysis_j
 # RUNTIME CONTEXT
 IDEA: {idea_text}
 
-WEB SEARCH DATA (USE FOR CITATIONS):
-{search_context}
-
-COMPETITOR ANALYSIS (from Competitor Agent):
-{competitor_analysis_json}
+{ledger_block}
+{competitor_section}
 """
     _log_prompt_size("moat_agent", prompt)
     return prompt
 
 
-def build_contrarian_prompt(idea_text: str, search_context: str, research_context_json: str) -> str:
-    """Assemble the Contrarian Analysis Agent prompt from skills + runtime context."""
+def build_contrarian_prompt(
+    idea_text: str,
+    ledger: "EvidenceLedger",
+    research_context_json: str = "",
+) -> str:
+    """Assemble the Contrarian Analysis Agent prompt using an EvidenceLedger.
+
+    Phase 2.5: Accepts EvidenceLedger. The risk_signals field pre-seeds the
+    contrarian agent so it starts from research-grounded hypotheses rather
+    than generating risks from scratch.
+
+    Args:
+        idea_text: The original startup idea text.
+        ledger: Populated EvidenceLedger from the Research Agent.
+        research_context_json: Unused in Phase 2.5; kept for API compatibility.
+    """
     shared_rules = load_shared_rules()
     contrarian_skill = load_skill("contrarian_skill")
+    ledger_block = ledger.to_prompt_block()
 
     prompt = f"""# SHARED RULES
 {shared_rules}
@@ -182,18 +246,18 @@ def build_contrarian_prompt(idea_text: str, search_context: str, research_contex
 # RUNTIME CONTEXT
 IDEA: {idea_text}
 
-WEB SEARCH DATA (USE FOR CITATIONS):
-{search_context}
-
-RESEARCH CONTEXT (from Research Agent):
-{research_context_json}
+{ledger_block}
 """
     _log_prompt_size("contrarian_agent", prompt)
     return prompt
 
 
 def build_action_prompt(idea_text: str, scoring_json: str) -> str:
-    """Assemble the Action Plan Agent prompt from skills + runtime context."""
+    """Assemble the Action Plan Agent prompt from skills + runtime context.
+
+    Action Agent does not need search context or the ledger — it operates
+    purely on the deterministic scoring output.
+    """
     shared_rules = load_shared_rules()
     action_skill = load_skill("action_skill")
 

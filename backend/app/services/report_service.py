@@ -53,11 +53,24 @@ class ReportService:
         region: str | None = None,
         budget_range: str | None = None
     ) -> None:
-        """Execute the heavy AI and search operations in the background."""
+        """Execute the heavy AI and search operations in the background.
+
+        Phase 2.5 orchestration DAG:
+          search_context → Research Agent → ResearchContext
+                                          → EvidenceLedger (built here)
+          EvidenceLedger → Competitor Agent → CompetitorAnalysis
+          EvidenceLedger → Moat Agent      → MoatAnalysis
+          EvidenceLedger → Contrarian Agent → ContrarianAnalysis
+          [all results]  → ScoringService  → ScoringRubric
+          ScoringRubric  → Action Agent    → ActionPlan
+        """
+        import logging
         from app.core.database import SessionLocal
         from app.repositories.report_repository import ReportRepository
         from app.repositories.rate_limit_repository import RateLimitRepository
-        
+
+        dag_logger = logging.getLogger(__name__)
+
         new_db = SessionLocal()
         background_repo = ReportRepository(new_db)
         bg_rate_limit_repo = RateLimitRepository(new_db) if user_id else None
@@ -65,13 +78,14 @@ class ReportService:
         try:
             # 2. Start Scraping (status: SCRAPING)
             background_repo.update_status(report_id, "SCRAPING")
-            
+
             # Fetch live competitor context using Tavily Search API
             search_context = await search_venture_context(idea_text)
-            
+            dag_logger.info(f"[dag] search_context_chars={len(search_context)}")
+
             # 3. Start Generating (status: GENERATING)
             background_repo.update_status(report_id, "GENERATING")
-            
+
             if bg_rate_limit_repo and user_id:
                 # Re-verify quota to prevent concurrent spam
                 current_count = bg_rate_limit_repo.get_count(user_id, "idea_submission", date.today())
@@ -80,34 +94,60 @@ class ReportService:
                     return
                 # Increment quota now that heavy generation (paid API) is starting
                 bg_rate_limit_repo.increment(user_id, "idea_submission", date.today())
-            
+
             from app.schemas.report import SectionError
-            
-            # V2 Pipeline Orchestration
+
+            # ── Agent 1: Research (consumes raw search_context) ────────────────
             research_context = await self.ai_service.generate_research_context(idea_text, search_context)
-            
+
+            # ── Build EvidenceLedger from Research output ──────────────────────
+            # If Research succeeded → build typed ledger (Phase 2.5 path)
+            # If Research failed    → build minimal ledger with raw search context only
+            if not isinstance(research_context, SectionError):
+                ledger = self.ai_service.build_evidence_ledger(research_context, search_context)
+            else:
+                from app.schemas.evidence_ledger import EvidenceLedger
+                ledger = EvidenceLedger(raw_search_context=search_context)
+                dag_logger.warning("[dag] Research agent failed; using minimal EvidenceLedger fallback.")
+
+            ledger_block_chars = len(ledger.to_prompt_block())
+            dag_logger.info(
+                f"[dag] ledger built: block_chars={ledger_block_chars} "
+                f"(raw_search_context was {len(search_context)} chars) "
+                f"estimated_reduction_chars={len(search_context) - ledger_block_chars}"
+            )
+
+            # ── Agent 2: Competitor (consumes EvidenceLedger) ─────────────────
             competitor_analysis = await self.ai_service.generate_competitor_analysis(
-                idea_text, search_context, 
-                research_context.model_dump_json() if not isinstance(research_context, SectionError) else "{}"
+                idea_text, ledger
             )
-            
+
+            # ── Agent 3: Moat (consumes EvidenceLedger + CompetitorAnalysis) ──
+            competitor_json = (
+                competitor_analysis.model_dump_json()
+                if not isinstance(competitor_analysis, SectionError)
+                else "{}"
+            )
             moat_analysis = await self.ai_service.generate_moat_analysis(
-                idea_text, search_context, 
-                competitor_analysis.model_dump_json() if not isinstance(competitor_analysis, SectionError) else "{}"
+                idea_text, ledger, competitor_json
             )
-            
+
+            # ── Agent 4: Contrarian (consumes EvidenceLedger) ─────────────────
             contrarian_analysis = await self.ai_service.generate_contrarian_analysis(
-                idea_text, search_context, 
-                research_context.model_dump_json() if not isinstance(research_context, SectionError) else "{}"
+                idea_text, ledger
             )
-            
+
+            # ── Deterministic Scoring ──────────────────────────────────────────
             from app.services.scoring_service import ScoringService
-            scoring = ScoringService.calculate_score(research_context, competitor_analysis, moat_analysis, contrarian_analysis)
-            
+            scoring = ScoringService.calculate_score(
+                research_context, competitor_analysis, moat_analysis, contrarian_analysis
+            )
+
+            # ── Agent 5: Action Plan (consumes scoring only) ───────────────────
             action_plan = await self.ai_service.generate_action_plan(idea_text, scoring.model_dump_json())
-            
+
             from app.schemas.report import VentureReportV2, RecommendationSection
-            
+
             decision = "Build" if scoring.overall_score >= 70 else "Research Further" if scoring.overall_score >= 50 else "Pivot"
             confidence = "High" if scoring.overall_score >= 70 else "Medium" if scoring.overall_score >= 50 else "Low"
             recommendation = RecommendationSection(
@@ -117,7 +157,7 @@ class ReportService:
                 evidence=f"Deterministic scoring pipeline returned {scoring.overall_score}/100.",
                 rationale=f"Based on an overall score of {scoring.overall_score}/100, the calculated recommendation is to {decision}."
             )
-            
+
             report = VentureReportV2(
                 idea_summary=idea_text,
                 research_context=research_context,
@@ -128,10 +168,10 @@ class ReportService:
                 scoring_rubric=scoring,
                 recommendation=recommendation
             )
-            
+
             primary_industry = getattr(research_context, "primary_industry", "Unknown") if not isinstance(research_context, SectionError) else "Unknown"
             market_potential = getattr(research_context, "market_potential", "Unknown") if not isinstance(research_context, SectionError) else "Unknown"
-            
+
             # 4. Success (status: COMPLETED)
             background_repo.mark_completed(
                 report_id=report_id,
@@ -145,6 +185,7 @@ class ReportService:
             background_repo.mark_failed(report_id, str(e))
         finally:
             new_db.close()
+
 
     def get_report(self, report_id: uuid.UUID) -> Report | None:
         """Retrieve a report by ID."""
