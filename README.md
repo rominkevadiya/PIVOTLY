@@ -1,179 +1,184 @@
-# Venture Intelligence Platform
+# Pivotly — Venture Intelligence Platform
 
-## Overview
+> AI-powered startup idea analysis. Submit an idea, get a structured multi-agent venture report in seconds.
 
-Venture Intelligence Platform is an AI-powered startup idea analysis tool for founders, students, hackathon teams, and builders who want structured validation before investing time in a product.
+[![Python](https://img.shields.io/badge/Python-3.11%2B-blue)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-green)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-18-61DAFB)](https://react.dev)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791)](https://postgresql.org)
+[![Gemini](https://img.shields.io/badge/Gemini-2.5--flash-orange)](https://ai.google.dev)
 
-Most early-stage idea validation is fragmented across search, intuition, notes, and generic AI chats. This project turns a raw startup idea into a consistent venture report that evaluates industry, target audience, competitors, market potential, failure risks, opportunity gaps, improvements, and a final recommendation.
+---
 
-Unlike a generic AI wrapper, the platform uses a purpose-built prompt, strict JSON output, backend validation, report persistence, and a dedicated report UI. The current version focuses on the first working vertical slice: submit an idea, generate a Gemini-powered report, store it in PostgreSQL, and view it by report URL.
+## What Is Pivotly?
 
-## Features
+Pivotly transforms a raw startup idea into a structured venture intelligence report by running it through a **5-agent AI pipeline** grounded in live web data. Each agent is a specialist: a market researcher, a competitive analyst, a contrarian investor, a defensibility expert, and an execution strategist.
 
-### Currently Implemented (V1)
+The result is a scored, evidence-backed report — not a generic AI summary.
 
-- User registration, login, and bearer JWT-based authentication
-- Analysis history dashboard displaying previous startup reports with pagination
-- Daily submission rate limits (5 ideas per user per day) and user usage statistics endpoint
-- Startup idea submission form with validation, character counter, and optional region/budget context
-- Gemini 2.5 Flash venture analysis pipeline
-- Strict JSON report generation and Pydantic response validation
-- PostgreSQL persistence with SQLAlchemy and JSONB
-- Alembic database migration structure
-- Report retrieval by UUID (scoped to owner)
-- Clean React report viewing page with SVG Radar chart and highly professional, minimalist A4-optimised PDF export
-- Deeply enriched report generation (SWOT, Go-To-Market, Unit Economics, Prioritised Action Plan)
-- Recommendation badge for `Build`, `Pivot`, `Research Further`, and `Avoid`
-- Environment-based backend and frontend configuration
-- Global backend exception handling
-- MCP server endpoints for local/report tooling experiments
+---
 
-### Planned Future Features
+## Architecture at a Glance
 
-- Advanced market intelligence dashboard modules
-- Production-safe MCP authentication and per-user authorization
-- Public report sharing workflows and team collaboration space
-- Multi-language translation support for generated reports
+```
+POST /api/v1/analyze
+        │
+        ▼  (returns {report_id, status: "PENDING"} immediately)
+┌─────────────────────────────────────────────────────────────┐
+│                  FastAPI BackgroundTask                      │
+│                                                             │
+│  SearchService (Tavily → DDG fallback)                      │
+│        │                                                    │
+│        ▼                                                    │
+│  Research Agent  ──►  EvidenceLedger                        │
+│                              │                              │
+│              ┌───────────────┼───────────────┐             │
+│              ▼               ▼               ▼             │
+│        Competitor       Contrarian          Moat           │
+│           Agent            Agent            Agent          │
+│              │               │               │             │
+│              └───────────────┴───────────────┘             │
+│                              │                              │
+│                       Action Agent                          │
+│                              │                              │
+│                     ScoringService (deterministic)          │
+│                              │                              │
+│                    VentureReportV2  ──►  PostgreSQL         │
+└─────────────────────────────────────────────────────────────┘
 
-## Current Status
+Frontend polls GET /api/v1/reports/{id}/status → COMPLETED → renders report
+```
 
-This repository is a working full-stack V1, but it should be treated as an MVP codebase rather than production-hardened software.
+---
 
-Known items to address before public production use:
+## Key Features
 
-- MCP endpoints are mounted by the backend and can query reports outside the normal REST authorization flow. Disable them or add authentication and owner scoping before exposing `/api/v1/mcp/*`.
-- `SECRET_KEY` must be set explicitly in every non-local environment. The backend currently has a development fallback.
-- Daily analysis rate limiting is database-backed, but the check and increment are not fully atomic under concurrent requests.
-- Frontend build passes, but the lint script needs an ESLint 9 flat config.
-- Backend bytecode compilation passes, but there is no installed pytest-based test suite yet.
-- Deployment scripts start `gunicorn`; add it to backend dependencies or change the service command before using the scripts on a clean host.
+### V2 Multi-Agent Pipeline (Current)
+- **5-agent DAG** — Research, Competitor, Contrarian, Moat, Action agents run sequentially via `BackgroundTasks`
+- **EvidenceLedger** — typed context object passed between agents; replaces raw search string injection (~10× token reduction per downstream agent)
+- **Skills Architecture** — agent prompts stored as external `.md` files in `backend/app/skills/`; no prompt logic in Python
+- **Deterministic Scoring** — `ScoringService` produces a `ScoringRubric` from agent outputs using a pure Python math engine (no LLM scores)
+- **Partial Failure Recovery** — each agent section can independently fail with a `SectionError`; remaining agents continue
+- **`ReportValidationFactory`** — routes stored JSON to the correct Pydantic validator based on `schema_version`
 
-## Documentation
+### BackgroundTasks Orchestration
+- `POST /api/v1/analyze` returns `{report_id, status: "PENDING"}` immediately (no browser timeout risk)
+- Status lifecycle: `PENDING → SCRAPING → GENERATING → COMPLETED | FAILED`
+- Frontend polls `GET /api/v1/reports/{id}/status` until `COMPLETED`
 
-For deep technical details, please refer to the dedicated documentation files:
-- [Architecture Overview](docs/ARCHITECTURE.md)
-- [System Design Case Study](docs/SYSTEM_DESIGN_CASE_STUDY.md)
-- [AI Pipeline](docs/AI_PIPELINE.md)
-- [Database Design](docs/DATABASE.md)
-- [API Reference](docs/API.md)
+### Platform Foundation
+- JWT authentication (register, login, 24-hour tokens)
+- Two-tier rate limiting: IP-based (`slowapi`, 60 req/min) + user-based (5 analyses/day, DB-backed)
+- Live web grounding via Tavily Search API (DuckDuckGo fallback)
+- Full V1/V2 backward compatibility — old reports render with the V1 view; new reports with the V2 dashboard
+- React SPA: tabbed report view, PDF export, analysis history dashboard
+
+---
 
 ## Tech Stack
 
-### Frontend
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, React Router |
+| **Backend** | FastAPI, Python 3.11+, Uvicorn, Gunicorn |
+| **Database** | PostgreSQL 15 (AWS RDS), SQLAlchemy ORM, Alembic migrations |
+| **AI** | Gemini 2.5 Flash (`google-genai` SDK) |
+| **Search** | Tavily Search API → DuckDuckGo (`ddgs`) fallback |
+| **Auth** | JWT (python-jose), bcrypt password hashing |
+| **Rate Limiting** | SlowAPI (IP) + PostgreSQL atomic upserts (user) |
+| **Infrastructure** | AWS EC2 (`t3.micro`), AWS RDS, Nginx, systemd |
 
-- React
-- TypeScript
-- Vite
-- Tailwind CSS
-- React Router
-
-### Backend
-
-- FastAPI
-- PostgreSQL
-- SQLAlchemy
-- Alembic
-- Pydantic
-- JWT authentication
-- SlowAPI request limiting
-- MCP server package
-
-### AI
-
-- Gemini 2.5 Flash
-- Tavily Search API, with DuckDuckGo/DDGS fallback
+---
 
 ## Project Structure
 
 ```text
-backend/
-├── alembic/
-│   ├── versions/
-│   │   ├── 202606150001_create_reports_table.py
-│   │   ├── 202606160001_create_users_add_user_id.py
-│   │   └── 8dcd4fc7679f_create_rate_limits_table.py
-│   ├── env.py
-│   └── script.py.mako
-├── app/
-│   ├── api/
-│   │   └── v1/
-│   │       ├── endpoints/
-│   │       │   ├── analyze.py
-│   │       │   ├── auth.py
-│   │       │   ├── reports.py
-│   │       │   └── users.py
-│   │       ├── dependencies.py
-│   │       └── router.py
-│   ├── core/
-│   │   ├── config.py
-│   │   ├── database.py
-│   │   ├── dependencies.py
-│   │   ├── exceptions.py
-│   │   └── logging.py
-│   ├── models/
-│   │   ├── rate_limit.py
-│   │   ├── report.py
-│   │   └── user.py
-│   ├── repositories/
-│   │   ├── rate_limit_repository.py
-│   │   ├── report_repository.py
-│   │   └── user_repository.py
-│   ├── schemas/
-│   │   ├── analyze.py
-│   │   ├── auth.py
-│   │   └── report.py
-│   ├── services/
-│   │   ├── ai_service.py
-│   │   ├── auth_service.py
-│   │   ├── report_service.py
-│   │   └── search_service.py
-│   ├── utils/
-│   │   ├── prompt_builder.py
-│   │   └── security.py
-│   ├── main.py
-│   └── mcp_server.py
-├── alembic.ini
-├── requirements.txt
-└── .env.example
-
-frontend/
-├── src/
-│   ├── components/
-│   ├── context/
-│   ├── pages/
-│   │   ├── AnalyzePage.tsx
-│   │   ├── DashboardPage.tsx
-│   │   ├── HomePage.tsx
-│   │   ├── LoginPage.tsx
-│   │   ├── RegisterPage.tsx
-│   │   └── ReportPage.tsx
-│   ├── routes/
-│   │   └── AppRouter.tsx
-│   ├── services/
-│   │   └── api.ts
-│   ├── types/
-│   │   ├── auth.ts
-│   │   ├── dashboard.ts
-│   │   └── report.ts
-│   ├── App.tsx
-│   ├── index.css
-│   └── main.tsx
-├── index.html
-├── package.json
-├── tailwind.config.js
-├── postcss.config.js
-├── tsconfig.json
-├── vite.config.ts
-└── .env.example
+Pivotly/
+├── backend/
+│   ├── alembic/                    # Database migrations
+│   │   └── versions/               # Migration scripts
+│   ├── app/
+│   │   ├── api/v1/endpoints/       # Route controllers
+│   │   │   ├── analyze.py          # POST /analyze
+│   │   │   ├── auth.py             # register, login, me
+│   │   │   ├── reports.py          # report CRUD + status polling
+│   │   │   └── users.py            # user stats
+│   │   ├── core/                   # Config, DB session, deps, exceptions
+│   │   ├── models/                 # SQLAlchemy ORM models
+│   │   ├── repositories/           # Data access layer
+│   │   ├── schemas/
+│   │   │   ├── report.py           # VentureReportV2, SectionError, all agent schemas
+│   │   │   ├── evidence_ledger.py  # EvidenceLedger + to_prompt_block()
+│   │   │   ├── analyze.py          # AnalyzeRequest, AnalyzeResponse
+│   │   │   └── auth.py             # Auth request/response
+│   │   ├── services/
+│   │   │   ├── report_service.py   # BackgroundTasks orchestration DAG
+│   │   │   ├── ai_service.py       # Gemini integration + EvidenceLedger builder
+│   │   │   ├── research_service.py # Research Agent
+│   │   │   ├── competitor_service.py
+│   │   │   ├── moat_service.py
+│   │   │   ├── contrarian_service.py
+│   │   │   ├── action_service.py
+│   │   │   ├── scoring_service.py  # Deterministic scoring engine
+│   │   │   ├── search_service.py   # Tavily + DDG fallback
+│   │   │   ├── auth_service.py
+│   │   │   └── report_validation_factory.py
+│   │   ├── skills/                 # Agent prompt skill files (Markdown)
+│   │   │   ├── research_skill.md
+│   │   │   ├── competitor_skill.md
+│   │   │   ├── moat_skill.md
+│   │   │   ├── contrarian_skill.md
+│   │   │   ├── action_skill.md
+│   │   │   └── shared/             # Shared prompt rules
+│   │   │       ├── schema_rules.md
+│   │   │       ├── citation_rules.md
+│   │   │       ├── evidence_rules.md
+│   │   │       └── anti_hallucination.md
+│   │   ├── utils/
+│   │   │   ├── prompt_builder.py   # Prompt assembly (EvidenceLedger-aware)
+│   │   │   ├── skill_loader.py     # Cached Markdown skill file loader
+│   │   │   └── security.py
+│   │   ├── main.py
+│   │   └── mcp_server.py
+│   ├── requirements.txt
+│   └── .env.example
+├── frontend/
+│   └── src/
+│       ├── components/report/
+│       │   ├── ReportViewV1.tsx    # V1 legacy renderer
+│       │   └── ReportViewV2.tsx    # V2 tabbed dashboard
+│       ├── pages/                  # HomePage, AnalyzePage, DashboardPage, ReportPage
+│       ├── services/api.ts         # Typed fetch wrapper
+│       └── types/report.ts         # TypeScript interfaces for VentureReportV2
+├── docs/                           # Engineering documentation (source of truth)
+│   ├── README.md                   # Documentation index
+│   ├── AI_PIPELINE.md
+│   ├── API.md
+│   ├── ARCHITECTURE.md
+│   ├── DATABASE.md
+│   ├── DEPLOYMENT.md
+│   ├── ROADMAP.md
+│   ├── CHANGELOG.md
+│   └── PROJECT_STATUS.md
+└── README.md                       # This file
 ```
+
+---
 
 ## Local Development Setup
 
-### 1. Clone Repository
+### Prerequisites
+- Python 3.11+
+- Node.js 18+
+- PostgreSQL 15 (local instance or cloud)
+- Gemini API key ([get one free](https://aistudio.google.com/app/apikey))
+- Tavily API key — optional (DuckDuckGo used as fallback)
+
+### 1. Clone
 
 ```bash
-git clone <repository-url>
-cd Pivotly
+git clone https://github.com/rominkevadiya/PIVOTLY.git
+cd PIVOTLY
 ```
 
 ### 2. Backend Setup
@@ -186,44 +191,28 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Edit `backend/.env` with your local PostgreSQL database URL and Gemini API key.
+Edit `backend/.env` — at minimum set these three:
 
-At minimum, set `DATABASE_URL`, `GEMINI_API_KEY`, and `SECRET_KEY`.
-
-### 3. Frontend Setup
-
-```bash
-cd ../frontend
-npm install
-cp .env.example .env
-```
-
-### 4. Environment Variables
-
-Backend variables are defined in `backend/.env`:
-
-```bash
-DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/venture_intelligence
+```env
+DATABASE_URL=postgresql+psycopg2://postgres:postgres@localhost:5432/pivotly
 GEMINI_API_KEY=your-gemini-api-key
-GEMINI_MODEL=gemini-2.5-flash
-GEMINI_TIMEOUT_SECONDS=30
-TAVILY_API_KEY=optional-tavily-api-key
-ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
-ENVIRONMENT=development
-LOG_LEVEL=INFO
 SECRET_KEY=replace-with-a-long-random-secret
-ACCESS_TOKEN_EXPIRE_MINUTES=1440
 ```
 
-Frontend variables are defined in `frontend/.env`:
+Full environment variable reference:
 
-```bash
-VITE_API_BASE_URL=http://localhost:8000/api/v1
-```
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | ✅ | SQLAlchemy connection string for PostgreSQL |
+| `GEMINI_API_KEY` | ✅ | Gemini API key (free tier: ~20 req/day) |
+| `SECRET_KEY` | ✅ | Random secret for JWT signing |
+| `GEMINI_MODEL` | — | Model name (default: `gemini-2.5-flash`) |
+| `TAVILY_API_KEY` | — | Tavily search key; DDG used as fallback if absent |
+| `ALLOWED_ORIGINS` | — | Comma-separated CORS origins (default: localhost:5173) |
+| `ENVIRONMENT` | — | `development` or `production` (hides Swagger in prod) |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | — | JWT lifetime in minutes (default: `1440`) |
 
-### 5. Database Migration
-
-Create a PostgreSQL database named `venture_intelligence`, then run:
+### 3. Database Migration
 
 ```bash
 cd backend
@@ -231,160 +220,114 @@ source .venv/bin/activate
 alembic upgrade head
 ```
 
-### 6. Run Development Servers
-
-Backend:
+### 4. Frontend Setup
 
 ```bash
-cd backend
-source .venv/bin/activate
+cd frontend
+npm install
+cp .env.example .env
+# .env already has: VITE_API_BASE_URL=http://localhost:8000/api/v1
+```
+
+### 5. Run Servers
+
+**Backend** (terminal 1):
+```bash
+cd backend && source .venv/bin/activate
 uvicorn app.main:app --reload
+# → http://localhost:8000
+# → http://localhost:8000/docs  (Swagger — dev only)
 ```
 
-Frontend:
+**Frontend** (terminal 2):
+```bash
+cd frontend && npm run dev
+# → http://localhost:5173
+```
+
+---
+
+## Report Status Lifecycle
+
+After submitting an idea, the frontend polls the status endpoint until the report is ready:
+
+```
+PENDING     → Job created, background task queued
+SCRAPING    → Fetching live web data (Tavily / DDG)
+GENERATING  → AI agents running; scoring in progress
+COMPLETED   → VentureReportV2 saved to DB
+FAILED      → Pipeline error; see error_message field
+```
+
+---
+
+## Production Deployment
+
+Pivotly runs on a single AWS EC2 (`t3.micro`) + AWS RDS (PostgreSQL `db.t3.micro`) — no Redis, no Celery, no load balancer.
 
 ```bash
-cd frontend
-npm run dev
-```
-
-Open the frontend at:
-
-```text
-http://localhost:5173
-```
-
-## Environment Variables
-
-| Variable | Required | Used By | Description |
-|---|---:|---|---|
-| `DATABASE_URL` | Yes | Backend | SQLAlchemy connection string for PostgreSQL. |
-| `GEMINI_API_KEY` | Yes | Backend | API key used to call Gemini. |
-| `GEMINI_MODEL` | Yes | Backend | Gemini model name. Defaults to `gemini-2.5-flash`. |
-| `GEMINI_TIMEOUT_SECONDS` | No | Backend | Reserved timeout configuration for Gemini calls. |
-| `TAVILY_API_KEY` | No | Backend | Optional Tavily key for search enrichment. DDGS is used as fallback when Tavily is unavailable. |
-| `ALLOWED_ORIGINS` | Yes | Backend | Comma-separated CORS origins for frontend access. |
-| `ENVIRONMENT` | No | Backend | Runtime environment, usually `development` or `production`. |
-| `LOG_LEVEL` | No | Backend | Python logging level. |
-| `SECRET_KEY` | Yes | Backend | Random secret key used for signing JWT authentication tokens. |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | No | Backend | JWT access token lifetime in minutes. Defaults to `1440`. |
-| `VITE_API_BASE_URL` | Yes | Frontend | Base URL for backend API requests. |
-
-## Verification
-
-Current verified checks:
-
-```bash
-cd backend
+# On EC2
+git pull origin main
 source .venv/bin/activate
-python -m compileall -q app
+pip install -r requirements.txt
+alembic upgrade head
+sudo systemctl restart pivotly
+sudo journalctl -u pivotly -f
 ```
 
-```bash
-cd frontend
-npm run build
-```
+See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for full infrastructure details.
 
-Current known check gaps:
+---
 
-- `npm run lint` requires an ESLint 9 `eslint.config.js` file before it can run successfully.
-- `python -m pytest` requires adding pytest and real test modules; the current backend dependencies do not install pytest.
+## Documentation
+
+| Document | Contents |
+|----------|----------|
+| [`docs/AI_PIPELINE.md`](docs/AI_PIPELINE.md) | Agent schemas, EvidenceLedger, skills system, scoring engine |
+| [`docs/API.md`](docs/API.md) | All REST endpoints with request/response examples |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System overview, module breakdown, request lifecycle |
+| [`docs/DATABASE.md`](docs/DATABASE.md) | Schema, ERD, VentureReportV2 JSONB structure |
+| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | AWS infrastructure, env vars, deployment workflow |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Phase 4 backlog, risk matrix, cost analysis |
+| [`docs/CHANGELOG.md`](docs/CHANGELOG.md) | Version history (v1.0.0 → v2.0.5 → v2.1.0) |
+| [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | Current version, commits, known issues |
+
+---
+
+## Known Limitations
+
+| Issue | Severity | Mitigation |
+|-------|----------|-----------|
+| Gemini free tier: ~20 req/day quota | 🔴 High | Enable GCP Pay-As-You-Go billing; or implement multi-key rotation (Phase 4) |
+| Production 2 commits behind `main` | 🟡 Medium | Deploy `96c46a7` (EvidenceLedger) to EC2 |
+| No test suite | 🟡 Medium | `backend/app/tests/test_scoring_service.py` exists; expand coverage |
+| Error dumps in `/tmp/` not rotated | 🟢 Low | Add logrotate config for `/tmp/pivotly_errors/` |
+| MCP endpoints unauthenticated | 🟡 Medium | Disable or scope `/api/v1/mcp/*` before public launch |
+
+---
+
+## Roadmap
+
+| Phase | Status | Description |
+|-------|--------|-------------|
+| V1 Base Platform | ✅ Complete | Monolithic Gemini prompt, PostgreSQL, React report, PDF export |
+| Phase 1 — V2 Data Foundation | ✅ Complete | `schema_version` column, Alembic migration, V1/V2 routing |
+| Phase 2 — Multi-Agent DAG | ✅ Complete | 5-agent pipeline, SectionError, deterministic scoring |
+| Phase 2.5 — Skills & EvidenceLedger | ✅ Complete | External skill files, EvidenceLedger context passing, 10× token reduction |
+| Phase 3 — BackgroundTasks | ✅ Complete | Async orchestration, status polling, frontend V2 dashboard |
+| Phase 4 — Optimizations | 🔲 Planned | Search cache (PostgreSQL), deferred JSONB loading, public share links, multi-key Gemini rotation |
+
+---
 
 ## Security Notes
 
-- REST report routes are authenticated and owner-scoped.
-- MCP routes are currently mounted under `/api/v1/mcp` and should not be publicly exposed until they enforce authentication and report ownership.
-- Use a unique, high-entropy `SECRET_KEY` outside local development.
-- JWTs are stored by the frontend in `localStorage`; keep frontend dependencies and rendering paths conservative to reduce XSS risk.
-- Keep `.env`, database files, virtual environments, logs, and `node_modules` out of version control.
+- Report routes are authenticated and owner-scoped
+- MCP routes at `/api/v1/mcp/*` are currently unauthenticated — disable before public production use
+- Use a unique, high-entropy `SECRET_KEY` in all non-local environments
+- JWTs are stored in `localStorage`; keep frontend dependencies conservative to reduce XSS risk
+- Never commit `.env`, virtual environments, or `node_modules`
 
-## Deployment Notes
-
-The included deployment scripts target a single-host Ubuntu/Nginx/systemd setup and build the frontend with:
-
-```bash
-VITE_API_BASE_URL=/api/v1
-```
-
-Before using the scripts on a clean server:
-
-- Add `gunicorn` to `backend/requirements.txt` or change the systemd `ExecStart` command to use an installed ASGI server.
-- Ensure `backend/.env` contains `DATABASE_URL`, `GEMINI_API_KEY`, `SECRET_KEY`, `ALLOWED_ORIGINS`, and any optional search keys.
-- Run `alembic upgrade head` against the intended PostgreSQL database.
-- Disable or protect `/api/v1/mcp/*` unless MCP is intentionally part of the deployment.
-
-## Future Roadmap
-
-### Phase 2: User Authentication (Completed)
-- User registration and login
-- JWT authentication and security
-- Multi-user isolation
-
-### Phase 3: Dashboard & Limits (Completed)
-- Analysis history view and pagination
-- Usage statistics
-- Database-backed rate limiting
-
-### Phase 4: Data Augmentation & Integrations (Partially Completed)
-- Tavily Search API with DuckDuckGo fallback for competitor research (Completed)
-- Idea scoring rubric and dynamic SVG charts (Completed)
-- Professional A4 PDF export (Completed)
-- MCP server endpoints for local/report tooling experiments (Implemented, not production-safe yet)
-- Advanced competitor intelligence modules (Planned)
-
-### Phase 5: Deployment (Partially Completed)
-- AWS deployment (EC2)
-- Production observability and logging (systemd/journald)
-- Managed PostgreSQL (AWS RDS)
-- Harden deployment dependencies and MCP exposure before public production use
-
-## Screenshots
-
-### Home Page
-
-Screenshots will be added after the first visual QA pass.
-
-### Analyze Page
-
-Screenshots will be added after the first visual QA pass.
-
-### Report Page
-
-Screenshots will be added after the first visual QA pass.
-
-## Contribution Guidelines
-
-1. Fork the repository.
-2. Create a feature branch.
-3. Keep changes focused and aligned with the current product phase.
-4. Run backend and frontend checks before opening a pull request.
-5. Document meaningful architecture or API changes in this README.
-
-Recommended checks:
-
-```bash
-cd backend
-source .venv/bin/activate
-python -m compileall -q app
-```
-
-```bash
-cd frontend
-npm run build
-```
-
-When lint and tests are configured, pull requests should also run:
-
-```bash
-cd frontend
-npm run lint
-```
-
-```bash
-cd backend
-source .venv/bin/activate
-python -m pytest
-```
+---
 
 ## License
 
