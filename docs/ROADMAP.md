@@ -17,11 +17,11 @@ To achieve this, we **exclude** distributed tools like Redis, Celery, ElastiCach
 
 ---
 
-## 2. Phase 3: Major Architecture Improvements (Orchestration & Frontend)
-**Focus:** Wire the new multi-agent DAG into the main execution pipeline and overhaul the Frontend React dashboard.
+## 2. Phase 3: Architecture Improvements (Orchestration & Frontend) — **Completed**
+**Focus:** Wire the multi-agent DAG into the main execution pipeline and overhaul the Frontend React dashboard.
 
-### Expected Outcome
-When a user hits `/api/v1/analyze`, the background task executes the agents concurrently, runs the deterministic score, and saves a `VentureReportV2` JSON payload. The React frontend natively renders this as a tabbed, professional UI.
+### Outcome
+When a user hits `/api/v1/analyze`, the endpoint immediately returns `{report_id, status: "PENDING"}`. A `BackgroundTask` executes the agents sequentially using `EvidenceLedger` context passing, runs the deterministic score, and saves a `VentureReportV2` JSON payload. Status is polled by the frontend via `GET /api/v1/reports/{id}/status`. The React frontend renders a tabbed, professional UI on completion.
 
 ### Component Architecture & Frontend Changes
 
@@ -53,7 +53,7 @@ if (report.schema_version === 1 || !report.schema_version) {
 
 ---
 
-## 3. Phase 4: Optional Future Enhancements
+## 3. Phase 4: Active Backlog (Post-Launch Optimizations)
 **Focus:** Post-launch optimizations that improve performance, scalability, and UX.
 
 ### Expected Outcome

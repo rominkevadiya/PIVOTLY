@@ -1,26 +1,51 @@
-# Pivotly Project Status
+# Pivotly Status
 
-## Current State
-**Current Version:** 2.0.0-alpha (Phase 2 Completed)
-**Production Status:** Not yet deployed for V2 traffic. Core backend intelligence engine is validated and passing integration tests.
+**Current Version:** 2.1.0
+**Current Phase:** Phase 3 — Production Stable (2 commits ahead of EC2)
+**Production Status:** Live — EC2 running `1b55980`; local `main` at `96c46a7` (not yet deployed)
+**Latest Production Commit:** `1b55980` — fix(backend): safely handle SectionError in ScoringService
+**Latest Local Commit:** `96c46a7` — feat(backend): Phase 2.5 — EvidenceLedger orchestration
 
-## Completed Features
-- **V1 Base Platform:** Basic PDF generation, PostgreSQL user persistence, Gemini integration.
-- **Phase 1 (V2 Data Foundation):** Implemented `schema_version` backward compatibility and basic V2 database migrations.
-- **Phase 2 (V2 Agent Refactor):** Re-architected monolithic LLM prompt into a multi-agent Directed Acyclic Graph (DAG) including `ResearchService`, `CompetitorService`, `ContrarianService`, `MoatService`, and `ActionService`.
-- **Hallucination Prevention:** Downstream agents successfully cite sources mapped strictly to raw `search_context`.
-- **Deterministic Scoring:** Replaced arbitrary LLM scoring with predictable Python-based mathematics (`ScoringService`).
-- **Partial Failure Recovery:** Handled component failures via a `SectionError` fallback schema (`status: "UNAVAILABLE"`).
+---
 
-## Active Development Phase
-**Phase 3: Orchestration & Frontend (Pending)**
-- We are currently ready to wire the agent DAG into `ReportService.process_report` via `asyncio.gather`.
-- Next, we will rebuild the React frontend from a top-down scroll layout into an interactive, tabbed dashboard.
+## Completed
 
-## Technical Debt & Known Issues
-- `google.genai` static linting errors locally (though functionally working).
-- The pipeline executes completely within a single, synchronous HTTP connection, risking timeouts on low-quality networks. Fast-tracking FastAPI `BackgroundTasks` is required in Phase 3.
-- Rate-limiting relies on Postgres `ON CONFLICT` constraints, which is sufficient now but scales poorly under high load.
+- **V1 Base Platform:** Monolithic Gemini prompt, PostgreSQL persistence, React scrolling report, PDF export.
+- **Phase 1 — V2 Data Foundation:** `schema_version` column added to `reports` table; Alembic migration for dual-schema backward compatibility.
+- **Phase 2 — Multi-Agent DAG:** Monolithic prompt decomposed into a 5-agent Directed Acyclic Graph: `ResearchService`, `CompetitorService`, `ContrarianService`, `MoatService`, `ActionService`. `SectionError` fallback for partial failure recovery.
+- **Phase 2.5 — EvidenceLedger & Skills Architecture:**
+  - Introduced `EvidenceLedger` — a typed, token-efficient context object that replaces raw `search_context` injection into downstream agents.
+  - Migrated agent prompts from inline Python strings to external `.md` skill files (`backend/app/skills/`).
+  - Reduces redundant context injection from ~9,500 chars per downstream call to a single structured block.
+- **Phase 3 — BackgroundTasks Orchestration:**
+  - `POST /api/v1/analyze` returns `{report_id, status: "PENDING"}` immediately.
+  - AI generation runs in `FastAPI BackgroundTasks`, with status lifecycle: `PENDING → SCRAPING → GENERATING → COMPLETED | FAILED`.
+  - Frontend polls `GET /api/v1/reports/{id}/status` until `COMPLETED`.
+- **Deterministic Scoring Engine:** Replaced arbitrary LLM scores with a Python math engine (`ScoringService`). Category scores feed a weighted overall score (0–100).
+- **V1/V2 Compatibility:** `ReportValidationFactory` routes stored JSON to the correct Pydantic validator based on `schema_version`.
+- **Frontend V2 Dashboard:** Tabbed React report view rendering `VentureReportV2` sections.
+- **Deferred JSONB Loading:** `ReportSummary` list endpoint does not load `report_json` — eliminates memory bloat on dashboard.
 
-## Next Milestone
-**V2 Beta Launch:** Requires complete Phase 3 execution, meaning users can submit ideas and receive a dynamic, tabbed React report powered by the concurrent AI agents.
+---
+
+## In Progress
+
+- **Gemini API Key Rotation:** Free-tier quota (20 req/day) rotation across multiple keys in `ai_service.py` (tracking: see ROADMAP Phase 4).
+- **PostgreSQL Search Cache:** `search_caches` table for deduplicating Tavily/DDG calls by query hash.
+
+---
+
+## Known Issues
+
+- `google.genai` SDK produces static linting warnings locally (mypy/Pylance); runtime behavior is correct.
+- Rate limiting remains PostgreSQL-backed; under sustained parallel load this could produce transaction contention (acceptable at current scale — see ROADMAP risk matrix).
+- Error dumps written to `/tmp/pivotly_errors/` are not auto-rotated; disk monitoring required.
+
+---
+
+## Next Milestones
+
+- **Phase 4 — Search Caching:** Implement `search_caches` table and integrate cache hit/miss logic into `SearchService`.
+- **Phase 4 — Deferred Column Loading:** Apply SQLAlchemy `defer(Report.report_json)` in `ReportRepository.get_by_user_id`.
+- **Phase 4 — Public Share Links:** Add `share_token` UUID to `reports` table; create public `/reports/share/{token}` route.
+- **Phase 4 — Multi-Key Gemini Rotation:** List-based key rotation in `AIService` to bypass free-tier quota limits.

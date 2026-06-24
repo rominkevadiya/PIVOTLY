@@ -70,6 +70,7 @@ Pivotly/
     │   ├── repositories/       # Database access layer
     │   ├── schemas/            # Pydantic validation schemas
     │   ├── services/           # Core business logic
+    │   ├── skills/             # Agent prompt skill files (.md)
     │   ├── utils/              # Helper functions
     │   └── mcp_server.py       # Model Context Protocol integration
     ├── requirements.txt        # Python dependencies
@@ -98,9 +99,10 @@ The backend is built with FastAPI, strictly adhering to an n-tier architecture p
 *   **OpenAPI Docs:** Swagger UI (`/docs`) and ReDoc (`/redoc`) are available **only in `development` environment** (disabled in production via `docs_url=None`).
 *   **Services:** The orchestration layer containing business logic (`app/services/`). 
     *   `AuthService`: Handles password hashing, verification, and JWT creation.
-    *   `ReportService`: Orchestrates the rate limit checks, web search, AI generation, and database persistence.
-    *   `AIService`: Wraps the Gemini API integration.
-    *   `SearchService`: Wraps the DuckDuckGo search integration.
+    *   `ReportService`: Creates a pending report synchronously, then hands off to `BackgroundTasks`. Manages the full `PENDING → SCRAPING → GENERATING → COMPLETED | FAILED` lifecycle.
+    *   `AIService`: Wraps the Gemini API integration. Builds the `EvidenceLedger` from `ResearchContext` and dispatches typed context to each downstream agent.
+    *   `SearchService`: Wraps the Tavily Search API with DuckDuckGo fallback.
+    *   `ScoringService`: Deterministic Python math engine that produces `ScoringRubric` from agent outputs.
 *   **Repositories:** The data access layer (`app/repositories/`). Classes like `ReportRepository`, `UserRepository`, and `RateLimitRepository` abstract SQLAlchemy database queries away from the services.
 *   **Schemas:** Pydantic models (`app/schemas/`) used for strict request payload validation and response formatting.
 
@@ -131,12 +133,14 @@ The platform is deployed in a production-ready AWS environment using a decoupled
 1.  **Client:** POSTs to `/api/v1/analyze` with `{"idea_text": "...", "region": "...", "budget_range": "..."}` and a Bearer JWT.
 2.  **Router (`analyze.py`):** Intercepts the request. FastAPI validates the payload against `AnalyzeRequest` and the JWT against `get_current_user`.
 3.  **Service Orchestration (`ReportService`):**
-    *   Checks `RateLimitRepository` to ensure the user hasn't exceeded limits.
-    *   (Planned V2): Enqueues the processing into a FastAPI `BackgroundTask` and returns a pending `report_id` immediately to the client.
-4.  **AI Layer (DAG):** Executes `ResearchService`, `CompetitorService`, `ContrarianService`, and `MoatService` concurrently using `asyncio.gather`. Each agent parses and validates its own Pydantic subset.
-5.  **Scoring Layer:** `ScoringService` evaluates the deterministic metrics based on agent outputs.
-6.  **Persistence:** `ReportService` serializes the final `VentureReportV2` Pydantic object and calls `ReportRepository.create()` to save it to Postgres (saving the payload in the `JSONB` column).
-7.  **Rate Limit Update:** Calls `RateLimitRepository.increment()`.
+    *   Calls `create_pending_report()` — checks rate limits synchronously and inserts a `status: PENDING` row, then returns `report_id` to the client immediately.
+    *   Enqueues `process_report()` as a FastAPI `BackgroundTask`. Client polls `GET /api/v1/reports/{id}/status` for updates.
+4.  **Background DAG (`process_report`):**
+    *   Status → `SCRAPING`: Fetches live web data via `SearchService`.
+    *   Status → `GENERATING`: Increments rate limit quota, runs the 5-agent DAG sequentially with `EvidenceLedger` passed to each downstream agent. `ScoringService` produces deterministic scores.
+    *   Status → `COMPLETED`: Final `VentureReportV2` serialized and persisted to the `report_json` JSONB column.
+    *   Status → `FAILED`: Any unhandled exception sets `error_message` and marks the report failed.
+5.  **Rate Limit Update:** Incremented in the background task before the paid AI generation begins.
 
 ## Module Breakdown
 
@@ -146,7 +150,8 @@ The platform is deployed in a production-ready AWS environment using a decoupled
 *   **`models`**: SQLAlchemy table definitions defining the relational database schema.
 *   **`repositories`**: Data access objects abstracting SQL queries and transactions.
 *   **`schemas`**: Pydantic models for request/response serialization and validation.
-*   **`services`**: Pure business logic orchestrators. Contains the distinct AI agents (`ResearchService`, `CompetitorService`, etc.).
+*   **`services`**: Pure business logic orchestrators. Contains the distinct AI agents (`ResearchService`, `CompetitorService`, etc.) and `ScoringService`.
+*   **`skills/`**: External Markdown prompt files for each agent. Loaded at runtime — separates prompt engineering from Python logic.
 *   **`utils`**: Helpers for JSON parsing, JWT token management, and prompt construction.
 *   **`mcp_server.py`**: Model Context Protocol implementation allowing external LLMs to interact with Pivotly's data.
 
@@ -159,6 +164,7 @@ The platform is deployed in a production-ready AWS environment using a decoupled
 
 ## Current Limitations & Future Improvements
 
-1.  **Long-Lived HTTP Requests:** The `analyze_idea` workflow executes the web scrape and the Gemini API call within a single HTTP request lifecycle. We are migrating this to FastAPI `BackgroundTasks` with client-side polling.
-2.  **Database-Backed Rate Limiting:** Rate limiting relies entirely on database queries. Under high load, this puts transaction pressure on PostgreSQL compared to a fast, in-memory store like Redis.
-3.  **Gemini Free-Tier Quota:** The system uses a free-tier API key limited to 20 requests per day. Adding backend rotation across multiple API keys will allow the system to scale without hitting 429 quota exhaustion.
+1.  **Gemini Free-Tier Quota:** The system uses a free-tier API key (~20 req/day). Multi-key rotation in `AIService` is the Phase 4 mitigation (see [ROADMAP.md](ROADMAP.md)).
+2.  **Database-Backed Rate Limiting:** Rate limiting relies entirely on PostgreSQL queries. Acceptable at current scale; would require Redis under sustained high parallel load.
+3.  **Search Cache Absent:** Identical queries re-fetch Tavily/DDG every time. A `search_caches` PostgreSQL table (keyed by query hash) is the Phase 4 solution.
+4.  **Error Log Rotation:** Validation failure dumps to `/tmp/pivotly_errors/` are not auto-rotated and require manual disk monitoring.
