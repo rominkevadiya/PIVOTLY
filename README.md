@@ -265,6 +265,8 @@ FAILED      → Pipeline error; see error_message field
 
 Pivotly runs on a single AWS EC2 (`t3.micro`) + AWS RDS (PostgreSQL `db.t3.micro`) — no Redis, no Celery, no load balancer.
 
+**Important limitation:** The Adaptive Gemini KeyManager is process-local. Deployments must run with a single worker (`workers=1` via Uvicorn/Gunicorn). Future scaling to multiple workers requires migrating the KeyManager state to a Redis-backed distributed store.
+
 ```bash
 # On EC2
 git pull origin main
