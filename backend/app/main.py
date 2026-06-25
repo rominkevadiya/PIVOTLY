@@ -20,6 +20,10 @@ async def lifespan(app: FastAPI):
     import logging
     
     logger = logging.getLogger(__name__)
+    
+    from app.services.gemini.key_manager import KeyManager
+    await KeyManager.get_instance().startup_validate()
+    
     db = SessionLocal()
     try:
         stuck_reports = db.query(Report).filter(

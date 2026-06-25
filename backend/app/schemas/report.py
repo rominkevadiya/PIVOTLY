@@ -13,6 +13,7 @@ RecommendationDecision = Literal["Build", "Pivot", "Research Further", "Avoid"]
 class ReportStatus(str, Enum):
     PENDING = "PENDING"
     SCRAPING = "SCRAPING"
+    WAITING_FOR_API = "WAITING_FOR_API"
     GENERATING = "GENERATING"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"

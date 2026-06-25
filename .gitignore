@@ -85,6 +85,10 @@ test_api.py
 test_lifecycle.py
 test_v2_agents.py
 benchmark_defer.py
+test_db.py
+test_gemini_quota.py
+test_gemini_quota_detailed.py
+remote_logs.txt
 
 # System & AI tools
 .junie/
