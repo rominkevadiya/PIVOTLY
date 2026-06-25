@@ -6,10 +6,12 @@ context strings. This reduces token consumption by eliminating redundant
 full-search-context re-injection across downstream agents.
 """
 
+import json
 import logging
 import os
 import tempfile
 import uuid
+import copy
 
 from pydantic import ValidationError
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
@@ -21,9 +23,12 @@ from app.schemas.report import (
     ResearchContext,
     CompetitorAnalysis,
     MoatAnalysis,
-    ContrarianAnalysis
+    ContrarianAnalysis,
+    ActionPlan,
+    SectionError
 )
 from app.schemas.evidence_ledger import EvidenceLedger
+from app.services.gemini.key_manager import NoAvailableGeminiKey
 from app.utils.prompt_builder import (
     build_analysis_prompt,
     build_research_prompt,
@@ -150,7 +155,8 @@ class AIService:
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
-        self.client = None
+        from app.services.gemini.gemini_client import GeminiScheduler
+        self.gemini_scheduler = GeminiScheduler(settings)
 
     async def generate_report(
         self, 
@@ -164,52 +170,25 @@ class AIService:
         raw_response = await self._call_gemini(prompt, VentureReportV1)
         return self._parse_and_validate(raw_response, prompt, VentureReportV1)
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type(Exception),
-        reraise=True
-    )
-    async def _execute_with_retry(self, prompt: str, schema_class):
-        """Execute the actual API call with exponential backoff retries for transient errors."""
-        from google.genai import types
-        return await self.client.aio.models.generate_content(
-            model=self.settings.gemini_model,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                temperature=0.4,
-                max_output_tokens=32768,
-                response_mime_type="application/json",
-                response_schema=schema_class,
-            ),
-        )
-
     async def _call_gemini(self, prompt: str, schema_class) -> str:
         """Call Gemini and return the raw response text."""
+        import time
+        from app.services.gemini.metrics import global_metrics
+        
+        start_time = time.time()
         try:
-            from google import genai
-
-            if self.client is None:
-                self.client = genai.Client(api_key=self.settings.gemini_api_key)
-
-            response = await self._execute_with_retry(prompt, schema_class)
+            agent_name = schema_class.__name__
+            response_text = await self.gemini_scheduler.schedule(prompt, schema_class, agent_name)
+            global_metrics.log_execution_time(agent_name, start_time, time.time())
+            return response_text
         except Exception as exc:
+            # We catch Exception here but NoAvailableGeminiKey will also be caught?
+            # Actually NoAvailableGeminiKey should NOT be caught and wrapped in AIServiceError,
+            # otherwise ReportService can't catch NoAvailableGeminiKey specifically.
+            if isinstance(exc, NoAvailableGeminiKey):
+                raise
             logger.exception("Gemini request failed after retries.")
             raise AIServiceError("Gemini request failed.") from exc
-
-        try:
-            if response.candidates:
-                candidate = response.candidates[0]
-                logger.info(f"Gemini finish reason: {candidate.finish_reason}")
-                if getattr(candidate, "finish_reason", None) not in ("STOP", None, "stop"):
-                    logger.warning(f"Gemini generation stopped with reason: {candidate.finish_reason}")
-        except Exception as e:
-            logger.warning(f"Could not read candidate metadata: {e}")
-
-        if not response.text:
-            logger.error("Gemini returned an empty response.")
-            raise AIServiceError("Gemini returned an empty response.")
-        return response.text
 
     def _parse_and_validate(self, raw_response: str, prompt: str, schema_class):
         """Parse raw Gemini output and validate it against the report schema."""
@@ -223,9 +202,6 @@ class AIService:
                 raise AIServiceError(f"Gemini returned malformed V2 JSON. TraceID: {trace_id}") from exc
                 
             try:
-                import json
-                import copy
-                
                 data = json.loads(raw_response)
                 
                 def sanitize_list(lst: list, min_val: int | None, max_val: int | None, default_factory):
@@ -372,8 +348,9 @@ class AIService:
             raw_response = await self._call_gemini(prompt, ResearchContext)
             return self._parse_and_validate(raw_response, prompt, ResearchContext)
         except Exception as e:
+            if isinstance(e, NoAvailableGeminiKey):
+                raise
             logger.error(f"Research agent failed: {e}")
-            from app.schemas.report import SectionError
             return SectionError(error=str(e))
 
     async def generate_competitor_analysis(
@@ -394,8 +371,9 @@ class AIService:
             raw_response = await self._call_gemini(prompt, CompetitorAnalysis)
             return self._parse_and_validate(raw_response, prompt, CompetitorAnalysis)
         except Exception as e:
+            if isinstance(e, NoAvailableGeminiKey):
+                raise
             logger.error(f"Competitor agent failed: {e}")
-            from app.schemas.report import SectionError
             return SectionError(error=str(e))
 
     async def generate_moat_analysis(
@@ -416,8 +394,9 @@ class AIService:
             raw_response = await self._call_gemini(prompt, MoatAnalysis)
             return self._parse_and_validate(raw_response, prompt, MoatAnalysis)
         except Exception as e:
+            if isinstance(e, NoAvailableGeminiKey):
+                raise
             logger.error(f"Moat agent failed: {e}")
-            from app.schemas.report import SectionError
             return SectionError(error=str(e))
 
     async def generate_contrarian_analysis(
@@ -438,19 +417,20 @@ class AIService:
             raw_response = await self._call_gemini(prompt, ContrarianAnalysis)
             return self._parse_and_validate(raw_response, prompt, ContrarianAnalysis)
         except Exception as e:
+            if isinstance(e, NoAvailableGeminiKey):
+                raise
             logger.error(f"Contrarian agent failed: {e}")
-            from app.schemas.report import SectionError
             return SectionError(error=str(e))
 
     async def generate_action_plan(self, idea_text: str, scoring_json: str):
         """Generate Action Plan. Unchanged — operates on scoring data only."""
         try:
-            from app.schemas.report import ActionPlan, SectionError
             from app.utils.prompt_builder import build_action_prompt
             prompt = build_action_prompt(idea_text, scoring_json)
             raw_response = await self._call_gemini(prompt, ActionPlan)
             return self._parse_and_validate(raw_response, prompt, ActionPlan)
         except Exception as e:
+            if isinstance(e, NoAvailableGeminiKey):
+                raise
             logger.error(f"Action plan agent failed: {e}")
-            from app.schemas.report import SectionError
             return SectionError(error=str(e))

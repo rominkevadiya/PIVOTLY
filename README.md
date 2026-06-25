@@ -114,11 +114,6 @@ Pivotly/
 │   │   ├── services/
 │   │   │   ├── report_service.py   # BackgroundTasks orchestration DAG
 │   │   │   ├── ai_service.py       # Gemini integration + EvidenceLedger builder
-│   │   │   ├── research_service.py # Research Agent
-│   │   │   ├── competitor_service.py
-│   │   │   ├── moat_service.py
-│   │   │   ├── contrarian_service.py
-│   │   │   ├── action_service.py
 │   │   │   ├── scoring_service.py  # Deterministic scoring engine
 │   │   │   ├── search_service.py   # Tavily + DDG fallback
 │   │   │   ├── auth_service.py
