@@ -45,6 +45,22 @@ class ReportService:
             
         return pending_report
 
+    async def _run_agent_with_polling(self, db_repo: ReportRepository, report_id: uuid.UUID, func, *args, **kwargs):
+        """Runs an agent, polling and waiting if no Gemini keys are available."""
+        from app.services.gemini.key_manager import NoAvailableGeminiKey
+        import asyncio
+        while True:
+            try:
+                # Always ensure status is GENERATING before proceeding.
+                current_report = db_repo.get_by_id(report_id)
+                if current_report and current_report.status == "WAITING_FOR_API":
+                    db_repo.update_status(report_id, "GENERATING")
+                return await func(*args, **kwargs)
+            except NoAvailableGeminiKey:
+                db_repo.update_status(report_id, "WAITING_FOR_API")
+                # Wait before polling again
+                await asyncio.sleep(10)
+
     async def process_report(
         self,
         report_id: uuid.UUID,
@@ -98,7 +114,9 @@ class ReportService:
             from app.schemas.report import SectionError
 
             # ── Agent 1: Research (consumes raw search_context) ────────────────
-            research_context = await self.ai_service.generate_research_context(idea_text, search_context)
+            research_context = await self._run_agent_with_polling(
+                background_repo, report_id, self.ai_service.generate_research_context, idea_text, search_context
+            )
 
             # ── Build EvidenceLedger from Research output ──────────────────────
             # If Research succeeded → build typed ledger (Phase 2.5 path)
@@ -117,25 +135,55 @@ class ReportService:
                 f"estimated_reduction_chars={len(search_context) - ledger_block_chars}"
             )
 
-            # ── Agent 2: Competitor (consumes EvidenceLedger) ─────────────────
-            competitor_analysis = await self.ai_service.generate_competitor_analysis(
-                idea_text, ledger
-            )
+            from app.services.gemini.key_manager import KeyManager
+            from app.services.gemini.execution_mode import ExecutionMode
+            import asyncio
 
-            # ── Agent 3: Moat (consumes EvidenceLedger + CompetitorAnalysis) ──
-            competitor_json = (
-                competitor_analysis.model_dump_json()
-                if not isinstance(competitor_analysis, SectionError)
-                else "{}"
-            )
-            moat_analysis = await self.ai_service.generate_moat_analysis(
-                idea_text, ledger, competitor_json
-            )
+            mode = KeyManager.get_instance().current_execution_mode()
 
-            # ── Agent 4: Contrarian (consumes EvidenceLedger) ─────────────────
-            contrarian_analysis = await self.ai_service.generate_contrarian_analysis(
-                idea_text, ledger
-            )
+            if mode == ExecutionMode.ECONOMY:
+                dag_logger.info("[dag] Executing ECONOMY pipeline (sequential)")
+                # ── Agent 2: Competitor (consumes EvidenceLedger) ─────────────────
+                competitor_analysis = await self._run_agent_with_polling(
+                    background_repo, report_id, self.ai_service.generate_competitor_analysis, idea_text, ledger
+                )
+
+                # ── Agent 4: Contrarian (consumes EvidenceLedger) ─────────────────
+                contrarian_analysis = await self._run_agent_with_polling(
+                    background_repo, report_id, self.ai_service.generate_contrarian_analysis, idea_text, ledger
+                )
+
+                # ── Agent 3: Moat (consumes EvidenceLedger + CompetitorAnalysis) ──
+                competitor_json = (
+                    competitor_analysis.model_dump_json()
+                    if not isinstance(competitor_analysis, SectionError)
+                    else "{}"
+                )
+                moat_analysis = await self._run_agent_with_polling(
+                    background_repo, report_id, self.ai_service.generate_moat_analysis, idea_text, ledger, competitor_json
+                )
+                
+            else:
+                dag_logger.info(f"[dag] Executing {mode.value} pipeline (concurrent)")
+                # ── Agent 2 & 4: Competitor and Contrarian run concurrently ───────
+                competitor_task = self._run_agent_with_polling(
+                    background_repo, report_id, self.ai_service.generate_competitor_analysis, idea_text, ledger
+                )
+                contrarian_task = self._run_agent_with_polling(
+                    background_repo, report_id, self.ai_service.generate_contrarian_analysis, idea_text, ledger
+                )
+                
+                competitor_analysis, contrarian_analysis = await asyncio.gather(competitor_task, contrarian_task)
+
+                # ── Agent 3: Moat (consumes EvidenceLedger + CompetitorAnalysis) ──
+                competitor_json = (
+                    competitor_analysis.model_dump_json()
+                    if not isinstance(competitor_analysis, SectionError)
+                    else "{}"
+                )
+                moat_analysis = await self._run_agent_with_polling(
+                    background_repo, report_id, self.ai_service.generate_moat_analysis, idea_text, ledger, competitor_json
+                )
 
             # ── Deterministic Scoring ──────────────────────────────────────────
             from app.services.scoring_service import ScoringService
@@ -144,19 +192,13 @@ class ReportService:
             )
 
             # ── Agent 5: Action Plan (consumes scoring only) ───────────────────
-            action_plan = await self.ai_service.generate_action_plan(idea_text, scoring.model_dump_json())
-
-            from app.schemas.report import VentureReportV2, RecommendationSection
-
-            decision = "Build" if scoring.overall_score >= 70 else "Research Further" if scoring.overall_score >= 50 else "Pivot"
-            confidence = "High" if scoring.overall_score >= 70 else "Medium" if scoring.overall_score >= 50 else "Low"
-            recommendation = RecommendationSection(
-                decision=decision,
-                confidence=confidence,
-                confidence_score=scoring.overall_score,
-                evidence=f"Deterministic scoring pipeline returned {scoring.overall_score}/100.",
-                rationale=f"Based on an overall score of {scoring.overall_score}/100, the calculated recommendation is to {decision}."
+            action_plan = await self._run_agent_with_polling(
+                background_repo, report_id, self.ai_service.generate_action_plan, idea_text, scoring.model_dump_json()
             )
+
+            from app.schemas.report import VentureReportV2
+
+            recommendation = ScoringService.generate_recommendation(scoring.overall_score)
 
             report = VentureReportV2(
                 idea_summary=idea_text,
@@ -178,7 +220,7 @@ class ReportService:
                 report_json=report.model_dump(mode="json"),
                 industry=primary_industry,
                 market_potential=market_potential,
-                recommendation=decision,
+                recommendation=recommendation.decision,
             )
 
         except Exception as e:

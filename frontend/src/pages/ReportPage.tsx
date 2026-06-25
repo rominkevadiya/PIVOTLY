@@ -60,7 +60,17 @@ export function ReportPage() {
 
   return (
     <AppLayout>
-      {isLoading ? <LoadingState message={report?.status ? `Report is ${report.status.toLowerCase()}...` : "Loading report data..."} /> : null}
+      {isLoading ? (
+        <LoadingState 
+          message={
+            report?.status === "WAITING_FOR_API" 
+              ? "Waiting for an available AI model. Your report will resume automatically."
+              : report?.status 
+                ? `Report is ${report.status.toLowerCase()}...` 
+                : "Loading report data..."
+          } 
+        />
+      ) : null}
       {error && !isLoading ? <ErrorMessage message={error} /> : null}
       {report && report.status === "COMPLETED" && !isLoading ? <ReportRouter report={report} /> : null}
     </AppLayout>
