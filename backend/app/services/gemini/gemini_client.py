@@ -35,7 +35,7 @@ class GeminiScheduler:
             
             client = genai.Client(
                 api_key=key, 
-                http_options={'timeout': self.settings.gemini_timeout_seconds}
+                http_options={'timeout': int(self.settings.gemini_timeout_seconds * 1000)}
             )
             start_time = time.time()
             cooldown_triggered = False
