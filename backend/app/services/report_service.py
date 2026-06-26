@@ -35,6 +35,8 @@ class ReportService:
             current_count = self.rate_limit_repo.get_count(user_id, "idea_submission", today)
             if current_count >= 5:
                 raise RateLimitExceededError("Daily analysis limit reached")
+            # Increment synchronously to prevent race conditions
+            self.rate_limit_repo.increment(user_id, "idea_submission", today)
 
         # 1. Create report immediately (status: PENDING)
         pending_report = self.repository.create(
@@ -102,14 +104,7 @@ class ReportService:
             # 3. Start Generating (status: GENERATING)
             background_repo.update_status(report_id, "GENERATING")
 
-            if bg_rate_limit_repo and user_id:
-                # Re-verify quota to prevent concurrent spam
-                current_count = bg_rate_limit_repo.get_count(user_id, "idea_submission", date.today())
-                if current_count >= 5:
-                    background_repo.mark_failed(report_id, "Daily analysis limit reached.")
-                    return
-                # Increment quota now that heavy generation (paid API) is starting
-                bg_rate_limit_repo.increment(user_id, "idea_submission", date.today())
+            # Quota is now enforced and incremented synchronously in create_pending_report.
 
             from app.schemas.report import SectionError
 

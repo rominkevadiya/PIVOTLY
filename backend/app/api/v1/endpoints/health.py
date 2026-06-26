@@ -1,5 +1,7 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from app.services.gemini.key_manager import KeyManager
+from app.core.dependencies import get_current_user
+from app.models.user import User
 
 router = APIRouter()
 
@@ -12,7 +14,7 @@ async def health_check():
     }
 
 @router.get("/health/metrics")
-async def get_metrics():
+async def get_metrics(current_user: User = Depends(get_current_user)):
     """Returns detailed per-key metrics."""
     return {
         "metrics": KeyManager.get_instance().get_metrics()

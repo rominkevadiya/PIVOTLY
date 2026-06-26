@@ -163,7 +163,14 @@ class KeyManager:
             logger.warning(f"Key {identifier} rate limited (429). Cooldown for {cooldown_seconds}s.")
 
     def get_metrics(self) -> dict:
-        return self._key_metrics
+        """Return per-key metrics keyed by identifier (e.g. KEY_1), never by raw key value."""
+        sanitized = {}
+        for _raw_key, data in self._key_metrics.items():
+            identifier = data.get("identifier", "KEY_UNKNOWN")
+            sanitized[identifier] = {
+                k: v for k, v in data.items() if k not in ("masked",)
+            }
+        return sanitized
         
     def get_health_summary(self) -> dict:
         healthy = 0
