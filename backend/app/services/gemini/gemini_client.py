@@ -31,7 +31,7 @@ class GeminiScheduler:
             # Non-blocking acquire. Will raise NoAvailableGeminiKey if none available,
             # which bubbles up to ReportService to trigger WAITING_FOR_API state.
             key = self.key_manager.try_acquire_key()
-            identifier = self.key_manager.get_metrics()[key]["identifier"]
+            identifier = self.key_manager.get_identifier(key)
             
             client = genai.Client(
                 api_key=key, 

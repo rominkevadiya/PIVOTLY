@@ -162,6 +162,12 @@ class KeyManager:
             identifier = self._key_metrics[key]["identifier"]
             logger.warning(f"Key {identifier} rate limited (429). Cooldown for {cooldown_seconds}s.")
 
+    def get_identifier(self, key: str) -> str:
+        """Return the safe identifier for a given raw key."""
+        if key in self._key_metrics:
+            return self._key_metrics[key].get("identifier", "KEY_UNKNOWN")
+        return "KEY_UNKNOWN"
+
     def get_metrics(self) -> dict:
         """Return per-key metrics keyed by identifier (e.g. KEY_1), never by raw key value."""
         sanitized = {}
