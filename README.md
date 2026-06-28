@@ -329,7 +329,7 @@ See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for full infrastructure details.
 
 ## License
 
-Copyright © 2026 Romin Kevadiya. All rights reserved.
+Copyright © 2026 by Romin Kevadiya. All rights reserved.
 
 This repository is provided for viewing and evaluation purposes only.
 
