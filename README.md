@@ -336,3 +336,5 @@ This repository is provided for viewing and evaluation purposes only.
 You may **not** copy, modify, redistribute, sublicense, or use this software or any substantial portion of it without prior written permission from the copyright holder.
 
 For licensing or commercial inquiries, please contact the repository owner.
+
+Gmail: rominkevadiya@gmail.com 
